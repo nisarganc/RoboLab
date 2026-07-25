@@ -286,6 +286,7 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
     HEADLESS="$HEADLESS" \
     VIDEO_MODE="$VIDEO_MODE" \
     OUTPUT_FOLDER_NAME="$output_folder_name" \
+    NUM_RUNS_PER_TASK=10 \
     DEVICE="$DEVICE" \
         bash examples/policy/run_angledreach_eval_10x.sh
 

@@ -68,6 +68,8 @@ python clean_concatenated_hdf5.py output/dual_dinov3.zip --overwrite --keep-fold
 - reach configs folder pointed in serve_policy.py
 - does reach/angled reach expts use gripper?
 
+############## CLUSTER ################
+
 apptainer build --fakeroot \
   robolab-valpa.sif \
   RoboLab/docker/Apptainer.def
@@ -76,7 +78,13 @@ apptainer overlay create --size 4096 \
   robolab-valpa-overlay.img
 
 apptainer shell --nv \
-  --overlay overlay_interactive.img \
+  --overlay overlay_interactive2.img \
+  --bind "$PWD/RoboLab:/workspace/robolab" \
   robolab-valpa.sif
 
 cd /workspace/robolab/
+python-rtx-compat examples/demo/run_env_keys.py --headless --task AngledPickupCartoon2Task
+
+python-rtx-compat examples/demo/run_pickup_home_goals.py \
+  --task AngledPickupBananaTask \
+  --headless

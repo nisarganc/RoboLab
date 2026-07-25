@@ -19,7 +19,9 @@ import cv2
 import torch
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+#TODO: This is a hack to make goal image generation work with mounted repo onto apptainer.
+# REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path("/anvme/workspace/v106be10-valpa-robolab/RoboLab")
 WM_GOAL_DIR = REPO_ROOT / "assets" / "wm_tasks"
 
 

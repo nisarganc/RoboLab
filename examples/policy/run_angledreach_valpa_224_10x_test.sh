@@ -3,7 +3,7 @@ set -euo pipefail
 
 ISAAC_PYTHON="${ISAAC_PYTHON:-python-rtx-compat}"
 REMOTE_HOST="${REMOTE_HOST:-localhost}"
-REMOTE_PORT="${REMOTE_PORT:-8013}"
+REMOTE_PORT="${REMOTE_PORT:-8200}"
 SERVER_HOST="${SERVER_HOST:-0.0.0.0}"
 SERVER_START_TIMEOUT="${SERVER_START_TIMEOUT:-600}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-/workspace/robolab/output/}"
@@ -16,10 +16,8 @@ ARCHIVE_AFTER_MODEL="${ARCHIVE_AFTER_MODEL:-1}"
 DELETE_UNZIPPED_AFTER_ARCHIVE="${DELETE_UNZIPPED_AFTER_ARCHIVE:-1}"
 
 MODEL_CONFIGS=(
-    droid-256px-8f-ind.yaml
+    droid-224px-8f-dual-test.yaml
 )
-
-
 
 SERVER_PID=""
 MODEL_NAMES=()
@@ -288,7 +286,7 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
     HEADLESS="$HEADLESS" \
     VIDEO_MODE="$VIDEO_MODE" \
     OUTPUT_FOLDER_NAME="$output_folder_name" \
-    NUM_RUNS_PER_TASK=10 \
+    NUM_RUNS_PER_TASK=1 \
     DEVICE="$DEVICE" \
         bash examples/policy/run_angledreach_eval_10x.sh
 

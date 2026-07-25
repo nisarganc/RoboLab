@@ -24,10 +24,11 @@ fi
 TASKS=(
     ReachBananaTask
     ReachCoffeeCanTask
+    ReachPitcherTask
     ReachCoffeePotTask
+    ReachSpoonBigTask
     ReachOrangeJuiceCartonTask
     ReachPitcherTask
-    ReachSpoonBigTask
     ReachYogurtCupTask
     ReachAppleTask
     ReachBagelTask

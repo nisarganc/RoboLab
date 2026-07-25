@@ -8,6 +8,7 @@ HEADLESS="${HEADLESS:-1}"
 VIDEO_MODE="${VIDEO_MODE:-sensor}"
 OUTPUT_FOLDER_NAME="${OUTPUT_FOLDER_NAME:-}"
 DEVICE="${DEVICE:-cuda:0}"
+NUM_RUNS_PER_TASK="${NUM_RUNS_PER_TASK:-10}"
 
 EXTRA_ARGS=()
 if [[ "$HEADLESS" == "1" ]]; then
@@ -18,6 +19,8 @@ if [[ -n "$VIDEO_MODE" ]]; then
 fi
 
 TASKS=(
+    AngledReachBananaTask
+    AngledReachMarkerTask
     AngledReachDrillTask
     AngledReachCartoonTask
     AngledReachKetchupTask
@@ -77,7 +80,7 @@ fi
 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
     "$ISAAC_PYTHON" examples/policy/run_angledreach_eval.py \
     --policy valpa \
-    --num-runs 10 \
+    --num-runs $NUM_RUNS_PER_TASK \
     --num-envs 1 \
     --device "$DEVICE" \
     --task-dirs wm_tasks/angledreach \

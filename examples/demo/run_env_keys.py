@@ -215,7 +215,9 @@ def _simple_save(env, env_cfg, obs, label: str):
 
 def main():
     from robolab.core.environments.factory import get_envs
-    from robolab.registrations.droid_ee.auto_env_registrations_angled import auto_register_droid_ee_envs
+    # TODO: change here
+    # from robolab.registrations.droid_ee.auto_env_registrations_angled import auto_register_droid_ee_envs
+    from robolab.registrations.droid_ee.auto_env_registrations import auto_register_droid_ee_envs
 
     env = None
     try:

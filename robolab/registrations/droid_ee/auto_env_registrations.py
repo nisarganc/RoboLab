@@ -26,8 +26,14 @@ The columns are:
 - Tags: Tag names this environment belongs to
 
 """
-def auto_register_droid_ee_envs(task_dirs=DEFAULT_TASK_SUBFOLDERS, lighting_intensity=None, task=None, cameras=None,
-                             randomize_background=False, background_seed=None):
+def auto_register_droid_ee_envs(
+                                task_dirs=DEFAULT_TASK_SUBFOLDERS, 
+                                lighting_intensity=None, 
+                                task=None, 
+                                cameras=None,
+                                randomize_background=False, 
+                                background_seed=None
+                                ):
     """Automatically discover and register tasks.
 
     Args:
@@ -48,7 +54,7 @@ def auto_register_droid_ee_envs(task_dirs=DEFAULT_TASK_SUBFOLDERS, lighting_inte
     """
     del lighting_intensity  # Reserved for API parity with the joint-position registrar.
 
-    from robolab.core.environments.factory import auto_discover_and_create_cfgs, create_env_cfg
+    from robolab.core.environments.factory import auto_discover_and_create_cfgs
     from robolab.core.observations.observation_utils import generate_image_obs_from_cameras, generate_obs_cfg
     from robolab.registrations.droid_jointpos.camera_presets import WRIST_RIGHT
     from robolab.robots.droid import (

@@ -58,7 +58,7 @@ def auto_register_droid_ee_envs(task_dirs=DEFAULT_TASK_SUBFOLDERS, lighting_inte
         WristCameraCfg,
         contact_gripper,
     )
-    from robolab.variations.backgrounds import BrownPhotoStudioBackgroundCfg, EmptyWarehouseBackgroundCfg, BilliardHallBackgroundCfg
+    from robolab.variations.backgrounds import BilliardHallBackgroundCfg, HomeOfficeBackgroundCfg
     from robolab.variations.camera import EgocentricMirroredCameraCfg
     from robolab.variations.lighting import SphereLightCfg
 
@@ -96,7 +96,7 @@ def auto_register_droid_ee_envs(task_dirs=DEFAULT_TASK_SUBFOLDERS, lighting_inte
 
         background_cfg = _bg_factory
     else:
-        background_cfg = BilliardHallBackgroundCfg
+        background_cfg = HomeOfficeBackgroundCfg # BilliardHallBackgroundCfg
 
     auto_discover_and_create_cfgs(
         task_dir=TASK_DIR,

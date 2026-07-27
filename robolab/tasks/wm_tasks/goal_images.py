@@ -19,7 +19,7 @@ import cv2
 import torch
 
 
-#TODO: This is a hack to make goal image generation work with mounted repo onto apptainer.
+# TODO: This is a hack to make goal image generation work with mounted repo onto apptainer.
 # REPO_ROOT = Path(__file__).resolve().parents[3]
 REPO_ROOT = Path("/anvme/workspace/v106be10-valpa-robolab/RoboLab")
 WM_GOAL_DIR = REPO_ROOT / "assets" / "wm_tasks"
@@ -147,7 +147,6 @@ def generate_goal_images(env, env_cfg, obs: dict | None = None):
     return
 
 
-
 def main() -> int:
     from isaaclab.app import AppLauncher
 
@@ -183,11 +182,11 @@ def main() -> int:
         )
         generate_goal_images(env, env_cfg)
         env.close()
+
     finally:
         simulation_app.close()
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

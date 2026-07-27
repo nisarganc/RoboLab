@@ -186,15 +186,15 @@ def _drive_to_pose(env, env_cfg, obs, target_pose, *, gripper_action: float, lab
 def _close_gripper(env, obs):
     action = _zero_action(env)
     action[:, 6] = 1.0
-    for _ in range(max(1, args_cli.gripper_steps)):
+    for _ in range(max(1, 20)):
         obs, _, _, _, _ = env.step(action)
     return obs
 
 
 def _settle(env, obs, *, gripper_action: float):
     action = _zero_action(env)
-    action[:, 6] = gripper_action
-    for _ in range(max(0, args_cli.settle_steps)):
+    action[:, 6] = 1.0
+    for _ in range(max(0, 20)):
         obs, _, _, _, _ = env.step(action)
     return obs
 

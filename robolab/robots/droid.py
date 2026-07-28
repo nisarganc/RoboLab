@@ -319,27 +319,21 @@ class DroidIKActionCfg:
         controller=DifferentialIKControllerCfg(command_type="pose", 
                                                 use_relative_mode=True, 
                                                 ik_method="dls"),
-        scale=0.5,
+        scale=1.0,
         body_offset=DifferentialInverseKinematicsActionCfg.OffsetCfg(pos=[0.0, 0.0, 0.0]),
     )
 
-    finger_joint = BinaryJointPositionZeroToOneActionCfg(
-        asset_name="robot",
-        joint_names=["finger_joint"],
-        open_command_expr = {"finger_joint": 0.0},
-        close_command_expr={"finger_joint": np.pi / 4},
-    )
-    finger_joint = StepRelativeJointPositionActionCfg(
-        asset_name="robot",
-        joint_names=["finger_joint"],
-        scale=np.pi / 4,
-    )
     # finger_joint = BinaryJointPositionZeroToOneActionCfg(
     #     asset_name="robot",
     #     joint_names=["finger_joint"],
     #     open_command_expr = {"finger_joint": 0.0},
     #     close_command_expr={"finger_joint": np.pi / 4},
     # )
+    finger_joint = StepRelativeJointPositionActionCfg(
+        asset_name="robot",
+        joint_names=["finger_joint"],
+        scale=np.pi / 4,
+    )
 
 ########################################################
 # Observations

@@ -83,7 +83,7 @@ apptainer shell --nv \
   robolab-valpa.sif
 
 cd /workspace/robolab/
-python-rtx-compat examples/demo/run_env_keys.py --headless --task AngledPickupCartoon2Task
+python-rtx-compat examples/demo/run_env_keys.py --headless --task AngledReachMarker2Task
 
 python-rtx-compat examples/demo/run_pickup_home_goals.py \
   --task AngledPickupKetchupTask \

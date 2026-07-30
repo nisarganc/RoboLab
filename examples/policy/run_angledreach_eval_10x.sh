@@ -22,9 +22,9 @@ TASKS=(
     AngledReachBananaTask
     AngledReachDrillTask
     AngledReachMarkerTask
-    AngledReachMarker2Task
     AngledReachCartoonTask
     AngledReachKetchupTask
+    AngledReachMarker2Task
     AngledReachCartoon2Task
 )
 

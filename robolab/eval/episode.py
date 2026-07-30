@@ -120,7 +120,6 @@ def run_episode(env, env_cfg, episode, client: InferenceClient, *, headless=Fals
     timer = TimingStats()
 
     obs, _ = env.reset()
-    obs, _ = env.reset()
     max_steps = getattr(env_cfg, "episode_steps", None)
     # max_steps = env.max_episode_length
     video_fps = 1 / (env_cfg.sim.render_interval * env_cfg.sim.dt) # Hz

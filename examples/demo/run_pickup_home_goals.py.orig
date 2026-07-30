@@ -83,7 +83,6 @@ simulation_app = app_launcher.app
 import torch
 import isaaclab.utils.math as math_utils  # noqa: E402
 
-from robolab.core.environments.config import parse_env_cfg  # noqa: E402
 from robolab.core.environments.runtime import create_env  # noqa: E402
 from robolab.core.world.world_state import get_world  # noqa: E402
 from robolab.tasks.wm_tasks.goal_images import _save_rgb_image, goal_image_paths  # noqa: E402
@@ -187,7 +186,7 @@ def _drive_to_pose(env, env_cfg, obs, target_pose, *, gripper_action: float, lab
 def _close_gripper(env, obs):
     action = _zero_action(env)
     action[:, 6] = 1.0
-    for _ in range(max(1, args_cli.gripper_steps)):
+    for _ in range(max(1, 20)):
         obs, _, _, _, _ = env.step(action)
     return obs
 
@@ -195,7 +194,7 @@ def _close_gripper(env, obs):
 def _settle(env, obs, *, gripper_action: float):
     action = _zero_action(env)
     action[:, 6] = gripper_action
-    for _ in range(max(0, args_cli.settle_steps)):
+    for _ in range(max(0, 20)):
         obs, _, _, _, _ = env.step(action)
     return obs
 
@@ -234,21 +233,11 @@ def main():
         if not task_envs:
             raise RuntimeError(f"No registered env found for task {args_cli.task!r}")
 
-        env_cfg = parse_env_cfg(
+        env, env_cfg = create_env(
             task_envs[0],
             device=args_cli.device,
-            seed=0,
             num_envs=args_cli.num_envs,
             use_fabric=True,
-        )
-        # This is a goal-capture trajectory, not an episode evaluation. Pickup
-        # success and the normal episode time limit would otherwise terminate
-        # and auto-reset the environment partway through the return-home drive.
-        env_cfg.terminations.success = None
-        env_cfg.terminations.time_out = None
-
-        env, env_cfg = create_env(
-            env_cfg,
             policy="a",
         )
         obs, _ = env.reset()

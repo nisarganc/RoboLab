@@ -270,6 +270,8 @@ def main():
             gripper_action=0.0,
             label="goal 1 pickup pose",
         )
+        # obs = _save_goal(env, env_cfg, obs, status_payload, 1, "goal 1 home")
+        # exit()
 
         obs = _close_gripper(env, obs)
         obs = _settle(env, obs, gripper_action=1.0)

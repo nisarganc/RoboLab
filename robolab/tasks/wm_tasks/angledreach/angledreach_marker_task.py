@@ -36,13 +36,12 @@ class AngledReachMarkerTerminations:
 class AngledReachMarkerTask(Task):
     contact_object_list = [
         "table",
-        "grey_bin",
         "mug",
         "bowl",
         "mustard",
         "dry_erase_marker",
     ]
-    scene = import_scene("bin_mug_mustard_marker_bowl.usda", contact_object_list)
+    scene = import_scene("bin_mug_mustard_marker_bowl2.usda", contact_object_list)
     terminations = AngledReachMarkerTerminations
     instruction = {
         "default": "AngledReachMarker",

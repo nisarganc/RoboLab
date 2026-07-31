@@ -24,7 +24,6 @@ TASKS=(
     AngledReachMarkerTask
     AngledReachCartoonTask
     AngledReachKetchupTask
-    AngledReachMarker2Task
     AngledReachCartoon2Task
 )
 

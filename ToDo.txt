@@ -78,15 +78,16 @@ apptainer overlay create --size 4096 \
   robolab-valpa-overlay.img
 
 apptainer shell --nv \
-  --overlay overlay_interactive3.img \
+  --overlay overlay_interactive.img \
   --bind "$PWD/RoboLab:/workspace/robolab" \
+  --bind "$PWD/.cache/checkpoints:/workspace/robolab/checkpoints" \
   robolab-valpa.sif
 
 cd /workspace/robolab/
 python-rtx-compat examples/demo/run_env_keys.py --headless --task 
 
 python-rtx-compat examples/demo/run_pickup_home_goals.py \
-  --task AngledReachBananaTask \
+  --task AngledPickupBananaTask \
   --headless
 
 python-rtx-compat robolab/tasks/wm_tasks/goal_images.py --task ReachPitcherTask

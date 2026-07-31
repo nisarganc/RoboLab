@@ -19,7 +19,7 @@ import zipfile
 import h5py
 
 
-DEFAULT_ZIP_GLOB = "output_pickup/*.zip"
+DEFAULT_ZIP_GLOB = "output/*.zip"
 
 DISTANCE_THRESHOLD = 0.05
 ANGLE_THRESHOLD_DEGREES = 15.0
@@ -68,7 +68,7 @@ def load_goal_pose(task: str, assets_root: Path) -> tuple[list[float], list[floa
     with status_path.open("r", encoding="utf-8") as handle:
         status_data = json.load(handle)
 
-    goal_pose = status_data["last_ee_pose_3"]
+    goal_pose = status_data["last_ee_pose"]
     return goal_pose[:3], goal_pose[3:7]
 
 

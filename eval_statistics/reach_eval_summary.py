@@ -223,11 +223,3 @@ def summarize(
     return rows
 
 
-def print_table(rows: list[dict[str, object]]) -> None:
-    print(
-        f"{'Model':<30} {'Task':<32} {'Runs':>4} {'Succ':>4} {'SR':>6} "
-        f"{'Pos Mean':>10} {'Pos Std':>10} {'Ang Mean':>10} {'Ang Std':>10}"
-    )
-    print("-" * 130)
-    for row in rows:
-  

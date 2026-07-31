@@ -3,7 +3,7 @@ set -euo pipefail
 
 ISAAC_PYTHON="${ISAAC_PYTHON:-python-rtx-compat}"
 REMOTE_HOST="${REMOTE_HOST:-localhost}"
-REMOTE_PORT="${REMOTE_PORT:-8004}"
+REMOTE_PORT="${REMOTE_PORT:-8016}"
 SERVER_HOST="${SERVER_HOST:-0.0.0.0}"
 SERVER_START_TIMEOUT="${SERVER_START_TIMEOUT:-600}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-/workspace/robolab/output/}"
@@ -17,7 +17,6 @@ DELETE_UNZIPPED_AFTER_ARCHIVE="${DELETE_UNZIPPED_AFTER_ARCHIVE:-1}"
 
 MODEL_CONFIGS=(
     droid-224px-8f-dual.yaml
-    droid-256px-8f-dual.yaml
 )
 
 SERVER_PID=""
@@ -198,7 +197,7 @@ trap 'cleanup_server; exit 143' TERM
 if port_open; then
     echo "Port $REMOTE_HOST:$REMOTE_PORT is already open."
     echo "Stop the existing VALPA server before running the model sweep, so each cfg is evaluated against the intended hosted model."
-    pkill -f "valpa/inference/serve_policy.py.*--port $REMOTE_PORT" || true
+    pkill -f "valpa/inference/serve_policy_pickup.py.*--port $REMOTE_PORT" || true
 fi
 
 mkdir -p "$SERVER_LOG_DIR"
@@ -254,16 +253,16 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
     fi
 
     cfg_name="${cfg_file%.yaml}"
-    server_log="$SERVER_LOG_DIR/${cfg_name}_serve_policy.log"
+    server_log="$SERVER_LOG_DIR/${cfg_name}_serve_policy_pickup.log"
 
     echo
     echo "=== Starting VALPA server: $cfg_file ==="
 
-    pkill -f "valpa/inference/serve_policy.py.*--port $REMOTE_PORT" || true
+    pkill -f "valpa/inference/serve_policy_pickup.py.*--port $REMOTE_PORT" || true
     sleep 2
 
     PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-        "$ISAAC_PYTHON" valpa/inference/serve_policy.py \
+        "$ISAAC_PYTHON" valpa/inference/serve_policy_pickup.py \
         --cfg-file "valpa-angledpickup/$cfg_file" \
         --host "$SERVER_HOST" \
         --port "$REMOTE_PORT" \
@@ -298,7 +297,7 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
             --num-envs 1 \
             --device "$DEVICE" \
             --task-dirs wm_tasks/angledpickup \
-            --task AngledPickupKetchupTask AngledPickupMarkerTask AngledPickupBananaTask AngledPickupButterTask AngledPickupBagelTask \
+            --task AngledPickupKetchupTask \
             --remote-host "$REMOTE_HOST" \
             --remote-port "$REMOTE_PORT" \
             --output-folder-name "$output_folder_name" \

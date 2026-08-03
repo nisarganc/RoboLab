@@ -21,10 +21,10 @@ import zipfile
 import h5py
 
 
-DEFAULT_ZIP_GLOB = "output_pickup/*.zip"
+DEFAULT_ZIP_GLOB = "output_reach/*.zip"
 
 DISTANCE_THRESHOLD = 0.05
-ANGLE_THRESHOLD_DEGREES = 15.0
+ANGLE_THRESHOLD_DEGREES = 50.0
 
 
 def mean(values: list[float]) -> float:

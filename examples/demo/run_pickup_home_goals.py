@@ -51,7 +51,7 @@ parser.add_argument(
     default=0.10,
     help="Maximum absolute xyz/rotation action component during automated drives.",
 )
-parser.add_argument("--gripper-steps", type=int, default=14, help="Number of close-gripper env steps.")
+parser.add_argument("--gripper-steps", type=int, default=160, help="Number of close-gripper env steps.")
 parser.add_argument("--settle-steps", type=int, default=2, help="Settling steps after grasp and after home drive.")
 parser.add_argument("--force-livestream", action="store_true", help="Force WebRTC livestream mode.")
 
@@ -138,6 +138,19 @@ def _pose_to_list(pose: torch.Tensor) -> list[float]:
     return [float(x) for x in pose.detach().cpu().tolist()]
 
 
+def _gripper_joint_state(env) -> tuple[list[float], list[float]]:
+    robot = env.scene["robot"]
+    joint_idx = robot.data.joint_names.index("finger_joint")
+    actual = robot.data.joint_pos[:, joint_idx].detach().cpu().tolist()
+    target = robot.data.joint_pos_target[:, joint_idx].detach().cpu().tolist()
+    return [float(x) for x in actual], [float(x) for x in target]
+
+
+def _print_gripper_joint_state(env, label: str) -> None:
+    actual, target = _gripper_joint_state(env)
+    print(f"{label}: finger_joint actual={actual}, target={target}", flush=True)
+
+
 def _quat_error_axis_angle(current_quat: torch.Tensor, target_quat: torch.Tensor) -> torch.Tensor:
     current_quat = torch.nn.functional.normalize(current_quat, dim=-1)
     target_quat = torch.nn.functional.normalize(target_quat, dim=-1)
@@ -185,10 +198,12 @@ def _drive_to_pose(env, env_cfg, obs, target_pose, *, gripper_action: float, lab
 
 
 def _close_gripper(env, obs):
+    _print_gripper_joint_state(env, "before close")
     action = _zero_action(env)
     action[:, 6] = 1.0
     for _ in range(max(1, args_cli.gripper_steps)):
         obs, _, _, _, _ = env.step(action)
+    _print_gripper_joint_state(env, "after close")
     return obs
 
 
@@ -212,11 +227,14 @@ def _save_goal(env, env_cfg, obs, status_payload: dict, suffix: int, label: str)
     _save_rgb_image(obs["image_obs"][wrist_key][0], wrist_path)
 
     ee_pose = _pose_to_list(_current_ee_pose(env, env_cfg))
+    gripper_actual, gripper_target = _gripper_joint_state(env)
     status_payload["reached"] = True
     status_payload["manual_capture"] = True
     status_payload["automated_pickup_home"] = True
     status_payload["last_distance"] = 0.0
     status_payload[f"last_ee_pose_{suffix}"] = ee_pose
+    status_payload[f"gripper_joint_pos_{suffix}"] = gripper_actual
+    status_payload[f"gripper_joint_target_{suffix}"] = gripper_target
     _write_output_status(env_cfg, status_payload)
 
     print(f"saved {label}: {external_path.name}, {wrist_path.name}, last_ee_pose_{suffix}", flush=True)

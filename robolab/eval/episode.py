@@ -74,15 +74,13 @@ def set_client_goal_images(
 ):
     """Load cached goal images and set them on the policy client."""
     
-    REPO_ROOT = Path(__file__).resolve().parents[2]
-    WM_GOAL_DIR = REPO_ROOT / "assets" / "wm_tasks"
-    
+    from robolab.tasks.wm_tasks.goal_images import goal_image_paths
+
     external_key = env_cfg.goal.get("external_camera", "over_shoulder_right_camera")
     wrist_key = env_cfg.goal.get("wrist_camera", "wrist_cam")
-    task_name = getattr(env_cfg, "_task_name", env_cfg.__class__.__name__)
-    
-    external_goal = _load_rgb_image(WM_GOAL_DIR / task_name / f"{external_key}.png")
-    wrist_goal = _load_rgb_image(WM_GOAL_DIR / task_name / f"{wrist_key}.png")
+    paths = goal_image_paths(env_cfg)
+    external_goal = _load_rgb_image(paths["external"])
+    wrist_goal = _load_rgb_image(paths["wrist"])
 
     for env_id in range(env.num_envs):
         client.set_goal_images(

@@ -44,6 +44,7 @@ assets/objects/*
 assets/robots/*
 assets/scenes/*
 assets/cameras.usda
+assets/wm_tasks/bg_distractors/*
 
 output_reach/
 output_*

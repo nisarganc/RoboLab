@@ -14,7 +14,7 @@ import tempfile
 from pathlib import Path
 
 import robolab.constants
-from robolab.constants import BACKGROUND_ASSET_DIR, PACKAGE_DIR, TASK_DIR
+from robolab.constants import ASSET_DIR, BACKGROUND_ASSET_DIR, PACKAGE_DIR, TASK_DIR
 
 
 ANGLED_REACH_TASK_SUBFOLDERS = ["wm_tasks/bg_distractor"]
@@ -246,7 +246,7 @@ def auto_register_droid_ee_envs_bg_variations(
     for background_path, background_name in zip(background_paths, background_names):
         background_cfg = generate_background_config(background_path)
         for object_count in object_counts:
-            auto_discover_and_create_cfgs(
+            generated = auto_discover_and_create_cfgs(
                 task_dir=TASK_DIR,
                 tasks=generated_tasks[object_count],
                 add_tags=["background_variations", "angled_reach_background_variations"],
@@ -262,6 +262,11 @@ def auto_register_droid_ee_envs_bg_variations(
                 decimation=8,
                 seed=1,
             )
+            for env_cfg_class in generated.values():
+                env_name = env_cfg_class.__name__.removesuffix("EnvCfg")
+                env_cfg_class._goal_image_dir = str(
+                    Path(ASSET_DIR) / "wm_tasks" / "bg_distractors" / env_name
+                )
 
     registered_envs = get_envs_by_tag("angled_reach_background_variations")
     print(f"\033[96m[RoboLab] Registered {len(registered_envs)} angled variants.\033[0m")

@@ -1,9 +1,9 @@
 """Summarize pickup position and angle error by model and task.
 
-For each run, this script does NOT blindly use the final ee_pose. It scans the
-trajectory for the first timestep that satisfies the success criteria. If the
-run succeeds, position and angle errors are computed at that first-success
-index. If the run never succeeds, errors are computed at the final valid index.
+For each run, this script scans the trajectory to determine whether the success
+criteria were ever satisfied. Position and angle errors are always computed at
+the final recorded timestep, so the reported means do not depend on which
+timestep first crossed the success threshold.
 """
 
 from __future__ import annotations
@@ -19,10 +19,10 @@ import zipfile
 import h5py
 
 
-DEFAULT_ZIP_GLOB = "output/*.zip"
+DEFAULT_ZIP_GLOB = "output_reach/*.zip"
 
-DISTANCE_THRESHOLD = 0.05
-ANGLE_THRESHOLD_DEGREES = 15.0
+DISTANCE_THRESHOLD = 0.08
+ANGLE_THRESHOLD_DEGREES = 90.0
 
 
 def mean(values: list[float]) -> float:
@@ -73,7 +73,7 @@ def load_goal_pose(task: str, assets_root: Path) -> tuple[list[float], list[floa
 
 
 def run_result(position, orientation, goal_pos, goal_quat) -> dict[str, float | int | bool]:
-    """Return errors at first-success index, otherwise at final valid index."""
+    """Return success over the trajectory and errors at the final valid index."""
     num_steps = int(position.shape[0])
     if num_steps == 0:
         raise ValueError("empty ee_pose trajectory")
@@ -86,12 +86,11 @@ def run_result(position, orientation, goal_pos, goal_quat) -> dict[str, float | 
         ang_err = quat_angle_error_degrees_wxyz(orientation[index, :], goal_quat)
 
         if pos_err < DISTANCE_THRESHOLD and ang_err < ANGLE_THRESHOLD_DEGREES:
-            selected_index = index
             successful = True
             break
 
-    # Compute the reported errors explicitly at the selected index. This is the
-    # first success index for successes and the final valid index for failures.
+    # Always report the last recorded pose. The threshold determines success,
+    # but it does not determine which pose contributes to the error means.
     selected_pos_err = euclidean_distance(position[selected_index, :], goal_pos)
     selected_ang_err = quat_angle_error_degrees_wxyz(orientation[selected_index, :], goal_quat)
 

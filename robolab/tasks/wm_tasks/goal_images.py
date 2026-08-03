@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -25,12 +26,13 @@ REPO_ROOT = Path("/anvme/workspace/v106be10-valpa-robolab/RoboLab")
 WM_GOAL_DIR = REPO_ROOT / "assets" / "wm_tasks"
 
 
+
 def goal_image_paths(env_cfg) -> dict[str, Path]:
-    goal_cfg = env_cfg.goal
     external_key = env_cfg.goal.get("external_camera", "over_shoulder_right_camera")
     wrist_key = env_cfg.goal.get("wrist_camera", "wrist_cam")
     task_name = getattr(env_cfg, "_task_name", env_cfg.__class__.__name__)
-    root = WM_GOAL_DIR / task_name
+    configured_root = getattr(env_cfg, "_goal_image_dir", None)
+    root = Path(configured_root) if configured_root else WM_GOAL_DIR / task_name
     return {
         "external": root / f"{external_key}.png",
         "wrist": root / f"{wrist_key}.png",
@@ -58,6 +60,15 @@ def _compute_reach_goal_positions(env, target_object: str, z_offset: float) -> t
     target_positions = centroid.clone()
     target_positions[:, 2] = corners[:, :, 2].max(dim=1).values + z_offset
     return target_positions + env.scene.env_origins
+
+
+def _angled_status_path(task_name: str) -> Path:
+    task_root = WM_GOAL_DIR / task_name
+    for filename in ("status.json", "status_draft.json"):
+        candidate = task_root / filename
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(f"No angled-reach status pose found for {task_name} in {task_root}.")
 
 
 def drive_to_valpa_goal(env, env_cfg, obs: dict | None = None) -> dict:
@@ -99,7 +110,56 @@ def drive_to_valpa_goal(env, env_cfg, obs: dict | None = None) -> dict:
             obs, _, _, _, _ = env.step(actions)
 
     elif mode == "angled_reach":
-        raise NotImplementedError("Goal image generation for angled reach is not implemented yet.")
+        import isaaclab.utils.math as math_utils
+
+        task_name = getattr(env_cfg, "_task_name", env_cfg.__class__.__name__)
+        status_path = _angled_status_path(task_name)
+        with status_path.open("r", encoding="utf-8") as handle:
+            status = json.load(handle)
+        target_pose = status.get("last_ee_pose")
+        if not isinstance(target_pose, list) or len(target_pose) != 7:
+            raise ValueError(f"{status_path} must contain a 7D 'last_ee_pose'.")
+
+        target = torch.tensor(target_pose, dtype=torch.float32, device=env.device)
+        target_pos = target[:3].unsqueeze(0).repeat(env.num_envs, 1)
+        target_quat = target[3:7].unsqueeze(0).repeat(env.num_envs, 1)
+        pos_tolerance = float(env_cfg.goal.get("drive_pos_tolerance", 0.01))
+        angle_tolerance = float(env_cfg.goal.get("drive_angle_tolerance", 0.08))
+        last_angle_dist = math.inf
+
+        for _ in range(max(1, max_steps)):
+            gripper_pose = get_world(env).get_articulation_link_pose("robot", link_name, env_id=None)
+            pos_error = target_pos - gripper_pose[:, :3]
+
+            current_quat = torch.nn.functional.normalize(gripper_pose[:, 3:7], dim=-1)
+            desired_quat = torch.nn.functional.normalize(target_quat, dim=-1)
+            desired_quat = torch.where(
+                (current_quat * desired_quat).sum(dim=-1, keepdim=True) < 0.0,
+                -desired_quat,
+                desired_quat,
+            )
+            delta_quat = math_utils.quat_mul(
+                desired_quat,
+                math_utils.quat_conjugate(current_quat),
+            )
+            rot_error = math_utils.axis_angle_from_quat(delta_quat)
+
+            last_dist = torch.linalg.norm(pos_error, dim=1).max().item()
+            last_angle_dist = torch.linalg.norm(rot_error, dim=1).max().item()
+            if last_dist <= pos_tolerance and last_angle_dist <= angle_tolerance:
+                reached = True
+                break
+
+            actions.zero_()
+            actions[:, :3] = torch.clamp(pos_error, -max_action, max_action)
+            actions[:, 3:6] = torch.clamp(rot_error, -max_action, max_action)
+            obs, _, _, _, _ = env.step(actions)
+
+        print(
+            f"[RoboLab] Angled goal drive: reached={reached}, "
+            f"pos_err={last_dist:.4f}, angle_err={last_angle_dist:.4f}",
+            flush=True,
+        )
     else:
         raise ValueError(f"Unsupported goal mode: {mode}")
 
@@ -112,16 +172,21 @@ def drive_to_valpa_goal(env, env_cfg, obs: dict | None = None) -> dict:
     return obs, reached, last_dist, last_gripper_pose
 
 
-def generate_goal_images(env, env_cfg, obs: dict | None = None):
+def generate_goal_images(env, env_cfg, obs: dict | None = None, *, overwrite: bool = False):
     """Generate and cache one canonical pair of goal images for a WM task."""
     
     paths = goal_image_paths(env_cfg)
-    if all(path.exists() for path in paths.values()):
+    if not overwrite and all(path.exists() for path in paths.values()):
         return
 
     task_name = getattr(env_cfg, "_task_name")
     print(f"\033[96m[RoboLab] Generating goal images for {task_name}\033[0m")
     goal_obs, reached, last_dist, last_gripper_pose = drive_to_valpa_goal(env, env_cfg, obs=obs)
+    if not reached:
+        raise RuntimeError(
+            f"Robot did not reach the configured goal pose for {task_name}; "
+            f"last position error was {last_dist:.4f} m."
+        )
 
     # save images
     external_key = env_cfg.goal.get("external_camera", "over_shoulder_right_camera")

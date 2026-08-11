@@ -5,9 +5,8 @@
 
 This runner is intended for tasks whose cached goal assets are named with
 stage suffixes, e.g. ``over_shoulder_right_camera_1.png`` for angled reach,
-``*_2.png`` for grasp, and ``*_3.png`` for lifted/home-with-object. It swaps
-client goals after the corresponding sub-condition is met, with task step
-budgets as a fallback.
+``*_2.png`` for grasp, and ``*_3.png`` for lifted/home-with-object. Goal-image
+stages advance strictly from the configured step budgets.
 """
 
 import logging
@@ -74,84 +73,27 @@ def set_client_goal_images_for_stage(
         InferenceClient.reset(client, env_id=int(env_id))
 
 
-def _first_condition_sequence(env_cfg):
-    subtasks = getattr(env_cfg, "subtasks", None) or []
-    if not subtasks:
-        return []
-    conditions = getattr(subtasks[0], "conditions", {})
-    if not conditions:
-        return []
-    first_group = next(iter(conditions.values()))
-    return [condition for condition, _score in first_group]
+def _stage_from_step(env_cfg, step: int) -> int:
+    """Return the goal stage using only the configured cumulative step budgets."""
+    angled_steps = int(env_cfg.angledreach_steps)
+    grasp_steps = int(env_cfg.grasp_steps)
 
-
-def _condition_result_for_env(result, env_id: int) -> bool:
-    if isinstance(result, torch.Tensor):
-        if result.ndim == 0:
-            return bool(result.item())
-        return bool(result[env_id].item())
-    return bool(result)
-
-
-def _condition_met(condition, env, env_id: int) -> bool:
-    try:
-        return _condition_result_for_env(condition(env, env_id=env_id), env_id)
-    except TypeError:
-        return _condition_result_for_env(condition(env), env_id)
-
-
-def _stage_floor_from_step(env_cfg, step: int, stage0_completion_step: int | None) -> int:
-    angled_steps = getattr(env_cfg, "angledreach_steps", None)
-    grasp_steps = getattr(env_cfg, "grasp_steps", None)
-
-    # Once stage 0 is reached, hold stage 1 and only advance to stage 2
-    # after `grasp_steps` relative to that completion step.
-    if stage0_completion_step is not None:
-        if grasp_steps is not None and step >= stage0_completion_step + grasp_steps:
-            return 2
-        return 1
-
-    # Fallback: if stage 0 never triggers by condition, force stage 1 by time.
-    if angled_steps is None:
-        return 0
+    if step >= angled_steps + grasp_steps:
+        return 2
     if step >= angled_steps:
         return 1
     return 0
 
 
-def _update_goal_stages(
-    env,
-    env_cfg,
-    stages: list[int],
-    stage0_completion_steps: list[int | None],
-    conditions,
-    step: int,
-) -> list[int]:
-    """Advance per-env goal stages from conditions, with relative step fallback for stage 2."""
+def _update_goal_stages(env, env_cfg, stages: list[int], step: int) -> list[int]:
+    """Advance each active environment to the stage selected by ``step``."""
     changed_envs: list[int] = []
-    max_goal_stage = 2
+    target_stage = _stage_from_step(env_cfg, step)
 
     for env_id in range(env.num_envs):
         if env._frozen_envs[env_id]:
             continue
-
-        old_stage = stages[env_id]
-        target_stage = max(
-            stages[env_id],
-            _stage_floor_from_step(env_cfg, step, stage0_completion_steps[env_id]),
-        )
-
-        if target_stage < 1:
-            while target_stage < len(conditions):
-                if not _condition_met(conditions[target_stage], env, env_id):
-                    break
-                target_stage += 1
-
-        if stage0_completion_steps[env_id] is None and target_stage >= 1:
-            stage0_completion_steps[env_id] = step
-
-        target_stage = min(target_stage, max_goal_stage)
-        if target_stage != old_stage:
+        if target_stage > stages[env_id]:
             stages[env_id] = target_stage
             changed_envs.append(env_id)
 
@@ -172,8 +114,6 @@ def run_multi_subtasks_episode(env, env_cfg, episode, client: InferenceClient, *
     subtask_status = []
     clients = [client] * env.num_envs
     stages = [0 for _ in range(env.num_envs)]
-    stage0_completion_steps: list[int | None] = [None for _ in range(env.num_envs)]
-    conditions = _first_condition_sequence(env_cfg)
 
     if hasattr(client, "reset"):
         client.reset()
@@ -235,14 +175,7 @@ def run_multi_subtasks_episode(env, env_cfg, episode, client: InferenceClient, *
             subtask_status.append(per_env_infos)
 
             if hasattr(client, "set_goal_images"):
-                changed_envs = _update_goal_stages(
-                    env,
-                    env_cfg,
-                    stages,
-                    stage0_completion_steps,
-                    conditions,
-                    step + 1,
-                )
+                changed_envs = _update_goal_stages(env, env_cfg, stages, step + 1)
                 for env_id in changed_envs:
                     print(f"Env {env_id} advancing to stage {stages[env_id]} at step {step+1}")
                     set_client_goal_images_for_stage(

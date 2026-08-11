@@ -67,7 +67,7 @@ eval_log="$SERVER_LOG_DIR/${cfg_name}_eval.log"
 
 echo "=== Starting $MODEL_CONFIG on $REMOTE_HOST:$REMOTE_PORT ==="
 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-    "$ISAAC_PYTHON" valpa/inference/serve_policy_rotate.py \
+    "$ISAAC_PYTHON" valpa/inference/serve_policy.py \
     --cfg-file "valpa-angledreach/$MODEL_CONFIG" \
     --host "$SERVER_HOST" \
     --port "$REMOTE_PORT" \

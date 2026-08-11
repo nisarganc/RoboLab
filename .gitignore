@@ -43,6 +43,11 @@ assets/materials/*
 assets/objects/*
 assets/robots/*
 assets/scenes/*
+!assets/scenes/apple_plate_distractors_pickup.usda
+!assets/scenes/potato_masher_distractors_pickup.usda
+!assets/scenes/angledpickup_ketchup_high_friction.usda
+!assets/scenes/angledpickup_banana_high_friction.usda
+!assets/scenes/angledpickup_rubiks_cube_high_friction.usda
 assets/cameras.usda
 assets/wm_tasks/bg_distractors/*
 

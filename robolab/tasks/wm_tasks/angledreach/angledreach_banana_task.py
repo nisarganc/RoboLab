@@ -42,7 +42,7 @@ class AngledReachBananaTask(Task):
         "vague": "Reach the banana beside the bowl with a yawed wrist",
         "specific": "Move the robot gripper above the banana beside the bowl with the wrist yawed so the fingers follow the banana's long axis, without grasping it",
     }
-    episode_steps: int = 75
+    episode_steps: int = 100
     attributes = ["angled_reach", "dominant_yaw", "+rz", "goal"]
     goal = {
         "mode": "angled_reach",

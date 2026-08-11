@@ -27,7 +27,9 @@ class AngledPickupBananaTerminations:
         params={
             "object": "banana",
             "surface": "table",
-            "distance": 0.16,
+            "distance": 0.34510199220528137,
+            "status_path": STATUS_PATH,
+            "angle_tolerance": 0.09,
         },
     )
 
@@ -35,17 +37,17 @@ class AngledPickupBananaTerminations:
 @dataclass
 class AngledPickupBananaTask(Task):
     contact_object_list = ["table", "bowl", "banana"]
-    scene = import_scene("banana_bowl.usda", contact_object_list)
+    scene = import_scene("banana_bowl.usda", contact_object_list) #import_scene("angledpickup_banana_high_friction.usda", contact_object_list)
     terminations = AngledPickupBananaTerminations
     instruction = {
         "default": "AngledPickupBanana",
         "vague": "Approach the banana from an angle, grasp it, and lift it",
         "specific": "Move the robot gripper above the banana beside the bowl with a positive yaw rotation so the fingers follow its long axis, grasp it, and lift it at least 16 cm from the table",
     }
-    episode_steps: int = 160
-    angledreach_steps: int = 75
+    episode_steps: int = 165
+    angledreach_steps: int = 70
     grasp_steps: int = 10
-    pickup_steps: int = 75
+    pickup_steps: int = 90
     attributes = [
         "angled_reach",
         "pickup",

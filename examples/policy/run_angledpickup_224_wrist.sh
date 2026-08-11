@@ -11,7 +11,7 @@ HEADLESS="${HEADLESS:-1}"
 VIDEO_MODE="${VIDEO_MODE:-sensor}"
 OUTPUT_FOLDER_NAME="${OUTPUT_FOLDER_NAME:-}"
 DEVICE="${DEVICE:-cuda:0}"
-SERVER_LOG_DIR="${SERVER_LOG_DIR:-$OUTPUT_ROOT/valpa_angledpickup_model_sweep_logs_${REMOTE_PORT}}"
+SERVER_LOG_DIR="${SERVER_LOG_DIR:-$OUTPUT_ROOT/${REMOTE_PORT}}"
 ARCHIVE_AFTER_MODEL="${ARCHIVE_AFTER_MODEL:-1}"
 DELETE_UNZIPPED_AFTER_ARCHIVE="${DELETE_UNZIPPED_AFTER_ARCHIVE:-1}"
 
@@ -198,7 +198,7 @@ trap 'cleanup_server; exit 143' TERM
 if port_open; then
     echo "Port $REMOTE_HOST:$REMOTE_PORT is already open."
     echo "Stop the existing VALPA server before running the model sweep, so each cfg is evaluated against the intended hosted model."
-    pkill -f "valpa/inference/serve_policy_pickup.py.*--port $REMOTE_PORT" || true
+    pkill -f "valpa/inference/serve_policy.py.*--port $REMOTE_PORT" || true
 fi
 
 mkdir -p "$SERVER_LOG_DIR"
@@ -254,16 +254,16 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
     fi
 
     cfg_name="${cfg_file%.yaml}"
-    server_log="$SERVER_LOG_DIR/${cfg_name}_serve_policy_pickup.log"
+    server_log="$SERVER_LOG_DIR/${cfg_name}_serve_policy.log"
 
     echo
     echo "=== Starting VALPA server: $cfg_file ==="
 
-    pkill -f "valpa/inference/serve_policy_pickup.py.*--port $REMOTE_PORT" || true
+    pkill -f "valpa/inference/serve_policy.py.*--port $REMOTE_PORT" || true
     sleep 2
 
     PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-        "$ISAAC_PYTHON" valpa/inference/serve_policy_pickup.py \
+        "$ISAAC_PYTHON" valpa/inference/serve_policy.py \
         --cfg-file "valpa-angledpickup/$cfg_file" \
         --host "$SERVER_HOST" \
         --port "$REMOTE_PORT" \

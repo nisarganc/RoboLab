@@ -287,15 +287,31 @@ def object_picked_up(
     object: str,
     surface: str,
     distance: float = 0.05,
+    status_path: str | Path | None = None,
+    ee_pose_key: str = "last_ee_pose_3",
+    angle_tolerance: float = 0.09,
+    link_name: str = "panda_link8",
     env_id: int | None = None,
 ):
-    """Check if object is grabbed and lifted at least `distance` above the surface."""
+    """Check that an object is lifted and, optionally, the EE has the target angle."""
     result = _and(
         object_grabbed(env, object, env_id=env_id),
         object_above(env, object=object, reference_object=surface, env_id=env_id, z_margin=distance)
     )
+    if status_path is not None:
+        with Path(status_path).open("r", encoding="utf-8") as handle:
+            target_ee_pose = json.load(handle).get(ee_pose_key)
+        if not isinstance(target_ee_pose, list) or len(target_ee_pose) != 7:
+            raise ValueError(f"{status_path} must contain a 7D {ee_pose_key!r}")
+        gripper_pose = get_world(env).get_articulation_link_pose("robot", link_name, env_id=env_id)
+        target_quat = torch.as_tensor(target_ee_pose[3:7], dtype=gripper_pose.dtype, device=env.device)
+        angle_ok = quat_angle_error_wxyz(gripper_pose[..., 3:7], target_quat) <= angle_tolerance
+        result = _and(result, angle_ok)
     if robolab.constants.DEBUG:
-        print(f"object_picked_up: '{object}' grabbed and lifted {distance}m above '{surface}' -> {result}")
+        print(
+            f"object_picked_up: '{object}' grabbed and lifted {distance}m above "
+            f"'{surface}' with EE angle tolerance {angle_tolerance}rad -> {result}"
+        )
     return result
 
 #########################################################

@@ -300,6 +300,7 @@ class DroidJointPositionActionCfg:
         open_command_expr = {"finger_joint": 0.0},
         close_command_expr={"finger_joint": np.pi / 4},
     )
+
 @configclass
 class DroidIKActionCfg:
     """

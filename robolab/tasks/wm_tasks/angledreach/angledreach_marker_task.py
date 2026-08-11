@@ -48,7 +48,7 @@ class AngledReachMarkerTask(Task):
         "vague": "Approach the small marker from an angle",
         "specific": "Move the robot gripper above the lightweight dry-erase marker with a positive yaw rotation so the fingers align with its narrow barrel",
     }
-    episode_steps: int = 75
+    episode_steps: int = 100
     attributes = [
         "angled_reach",
         "size",

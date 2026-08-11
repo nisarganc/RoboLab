@@ -11,7 +11,7 @@ from isaaclab.utils import configclass
 
 from robolab.constants import ASSET_DIR
 from robolab.core.scenes.utils import import_scene
-from robolab.core.task.conditionals import angled_reach_object, object_grabbed, object_picked_up
+from robolab.core.task.conditionals import object_picked_up
 from robolab.core.task.subtask import Subtask
 from robolab.core.task.task import Task
 
@@ -23,11 +23,13 @@ class AngledPickupKetchupTerminations:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     success = DoneTerm(
         func=object_picked_up,
-        params={"object": "ketchup_bottle", 
-                "surface": "table", 
-                "distance": 0.16,
-                },
-
+        params={
+            "object": "ketchup_bottle",
+            "surface": "table",
+            "distance": 0.2058982690388593,
+            "status_path": STATUS_PATH,
+            "angle_tolerance": 0.09,
+        },
     )
 
 
@@ -44,17 +46,17 @@ class AngledPickupKetchupTask(Task):
         "ketchup_bottle",
         "cubebox_a02",
     ]
-    scene = import_scene("cartons_on_box.usda", contact_object_list)
+    scene = import_scene("cartons_on_box.usda", contact_object_list) #import_scene("angledpickup_ketchup_high_friction.usda", contact_object_list)
     terminations = AngledPickupKetchupTerminations
     instruction = {
         "default": "AngledPickupKetchup",
         "vague": "Reach the ketchup bottle with a yawed wrist, grasp it, and lift it up",
         "specific": "Move the robot gripper to the ketchup bottle with the wrist yawed to face the bottle from the side, grasp the bottle, and lift it off the table",
     }
-    episode_steps: int = 160
-    angledreach_steps: int = 75
+    episode_steps: int = 165
+    angledreach_steps: int = 70
     grasp_steps: int = 10
-    pickup_steps: int = 75
+    pickup_steps: int = 90
 
     attributes = ["angled_reach", "pickup", "grasp", "lift", "dominant_yaw", "+rz", "goal"]
     goal = {
@@ -68,16 +70,6 @@ class AngledPickupKetchupTask(Task):
             name="angled_pickup_ketchup",
             conditions={
                 "ketchup_bottle": [
-                    (
-                        partial(
-                            angled_reach_object,
-                            pos_tolerance=0.05,
-                            angle_tolerance=0.1745,
-                            status_path=STATUS_PATH,
-                        ),
-                        1.0,
-                    ),
-                    (partial(object_grabbed, object="ketchup_bottle"), 1.0),
                     (
                         partial(
                             object_picked_up,

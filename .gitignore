@@ -43,6 +43,7 @@ assets/materials/*
 assets/objects/*
 assets/robots/*
 assets/scenes/*
+!assets/scenes/macaroni_center_table.usda
 !assets/scenes/apple_plate_distractors_pickup.usda
 !assets/scenes/potato_masher_distractors_pickup.usda
 !assets/scenes/angledpickup_ketchup_high_friction.usda

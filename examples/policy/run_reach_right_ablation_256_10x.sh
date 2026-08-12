@@ -1,12 +1,11 @@
-#!/usr/bin/env bash
 set -euo pipefail
 
-ISAAC_PYTHON="${ISAAC_PYTHON:-python-rtx-compat}"
+export ISAAC_PYTHON="${ISAAC_PYTHON:-python-rtx-compat}"
 REMOTE_HOST="${REMOTE_HOST:-localhost}"
-REMOTE_PORT="${REMOTE_PORT:-8017}"
+REMOTE_PORT="${REMOTE_PORT:-9002}"
 SERVER_HOST="${SERVER_HOST:-0.0.0.0}"
 SERVER_START_TIMEOUT="${SERVER_START_TIMEOUT:-600}"
-OUTPUT_ROOT="${OUTPUT_ROOT:-/workspace/robolab/output/}"
+OUTPUT_ROOT="${OUTPUT_ROOT:-/anvme/workspace/v106be10-valpa-robolab/RoboLab/output}"
 HEADLESS="${HEADLESS:-1}"
 VIDEO_MODE="${VIDEO_MODE:-sensor}"
 OUTPUT_FOLDER_NAME="${OUTPUT_FOLDER_NAME:-}"
@@ -14,21 +13,28 @@ DEVICE="${DEVICE:-cuda:0}"
 SERVER_LOG_DIR="${SERVER_LOG_DIR:-$OUTPUT_ROOT/${REMOTE_PORT}}"
 ARCHIVE_AFTER_MODEL="${ARCHIVE_AFTER_MODEL:-1}"
 DELETE_UNZIPPED_AFTER_ARCHIVE="${DELETE_UNZIPPED_AFTER_ARCHIVE:-1}"
+NUM_RUNS_PER_TASK="${NUM_RUNS_PER_TASK:-10}"
 
 MODEL_CONFIGS=(
-    droid-224px-8f-ind.yaml
+    droid-256px-8f-right.yaml
+)
+
+TASKS=(
+    ReachBananaTask
+    ReachCoffeeCanTask
+    ReachCoffeePotTask
+    ReachOrangeJuiceCartonTask
+    ReachPitcherTask
+    ReachSpoonBigTask
+    ReachYogurtCupTask
+    ReachAppleTask
+    ReachBagelTask
+    ReachOrangeTask
+    ReachCeramicMugTask
 )
 
 SERVER_PID=""
 MODEL_NAMES=()
-EVAL_EXTRA_ARGS=()
-
-if [[ "$HEADLESS" == "1" ]]; then
-    EVAL_EXTRA_ARGS+=(--headless)
-fi
-if [[ -n "$VIDEO_MODE" ]]; then
-    EVAL_EXTRA_ARGS+=(--video-mode "$VIDEO_MODE")
-fi
 
 port_open() {
     (echo >"/dev/tcp/$REMOTE_HOST/$REMOTE_PORT") >/dev/null 2>&1
@@ -54,7 +60,8 @@ cleanup_server() {
         wait "$SERVER_PID" 2>/dev/null || true
     fi
     SERVER_PID=""
-
+    
+    # Wait for port to be released
     local max_wait=30
     local elapsed=0
     while port_open && (( elapsed < max_wait )); do
@@ -115,16 +122,6 @@ cfg_model_name() {
     ' "$cfg_file"
 }
 
-output_folder_for_model() {
-    local model_name="$1"
-
-    if [[ -n "$OUTPUT_FOLDER_NAME" ]]; then
-        echo "$OUTPUT_FOLDER_NAME"
-    else
-        echo "${model_name}_angledpickup"
-    fi
-}
-
 hosted_model_name() {
     PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
     REMOTE_HOST="$REMOTE_HOST" \
@@ -164,9 +161,9 @@ print(response["modelname"])
 }
 
 archive_model_output() {
-    local output_folder_name="$1"
-    local model_dir="$OUTPUT_ROOT/$output_folder_name"
-    local archive_file="$OUTPUT_ROOT/${output_folder_name}.zip"
+    local model_name="$1"
+    local model_dir="$OUTPUT_ROOT/$model_name"
+    local archive_file="$OUTPUT_ROOT/${model_name}.zip"
 
     if [[ "$ARCHIVE_AFTER_MODEL" != "1" ]]; then
         return 0
@@ -181,13 +178,66 @@ archive_model_output() {
     rm -f "$archive_file"
     (
         cd "$OUTPUT_ROOT"
-        zip -r -q "$(basename "$archive_file")" "$output_folder_name"
+        zip -r -q "$(basename "$archive_file")" "$model_name"
     )
 
     if [[ "$DELETE_UNZIPPED_AFTER_ARCHIVE" == "1" ]]; then
         echo "=== Removing expanded output folder after successful zip: $model_dir ==="
         rm -rf "$model_dir"
     fi
+}
+
+check_model_output_complete() {
+    local model_name="$1"
+    local expected_runs="$2"
+    local model_dir="$OUTPUT_ROOT/$model_name"
+    local episode_results_file="$model_dir/episode_results.jsonl"
+
+    if [[ ! -f "$episode_results_file" ]]; then
+        echo "Missing episode results file: $episode_results_file"
+        return 1
+    fi
+
+    PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
+        "$ISAAC_PYTHON" - "$episode_results_file" "$expected_runs" "${TASKS[@]}" <<'PY'
+import json
+import pathlib
+import sys
+
+episode_results_file = pathlib.Path(sys.argv[1])
+expected_runs = int(sys.argv[2])
+tasks = sys.argv[3:]
+
+episodes_per_task = {task: set() for task in tasks}
+
+with episode_results_file.open("r", encoding="utf-8") as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            ep = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        env_name = ep.get("env_name")
+        episode = ep.get("episode")
+
+        if env_name in episodes_per_task and isinstance(episode, int):
+            episodes_per_task[env_name].add(episode)
+
+incomplete = []
+for task in tasks:
+    count = len(episodes_per_task[task])
+    if count < expected_runs:
+        incomplete.append((task, count, expected_runs))
+
+if incomplete:
+    print("Model output is incomplete. Missing episodes:", file=sys.stderr)
+    for task, count, expected in incomplete:
+        print(f"  {task}: {count}/{expected}", file=sys.stderr)
+    raise SystemExit(1)
+PY
 }
 
 trap cleanup_server EXIT
@@ -197,7 +247,7 @@ trap 'cleanup_server; exit 143' TERM
 if port_open; then
     echo "Port $REMOTE_HOST:$REMOTE_PORT is already open."
     echo "Stop the existing VALPA server before running the model sweep, so each cfg is evaluated against the intended hosted model."
-    pkill -f "valpa/inference/serve_policy.py.*--port $REMOTE_PORT" || true
+    pkill -f "valpa/inference/serve_policy_ablation.py.*--port $REMOTE_PORT" || true
 fi
 
 mkdir -p "$SERVER_LOG_DIR"
@@ -206,7 +256,7 @@ echo "=== GPU visibility: CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset}, D
 FILTERED_MODEL_CONFIGS=()
 
 for cfg_file in "${MODEL_CONFIGS[@]}"; do
-    if ! model_name="$(cfg_model_name "/workspace/robolab/valpa/configs/inference/valpa-angledpickup/$cfg_file")"; then
+    if ! model_name="$(cfg_model_name "/workspace/robolab/valpa/configs/inference/valpa-reach/ablation/$cfg_file")"; then
         echo "Could not find modelname in config file: $cfg_file"
         exit 1
     fi
@@ -216,8 +266,7 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
         exit 1
     fi
 
-    output_folder_name="$(output_folder_for_model "$model_name")"
-    archive_file="$OUTPUT_ROOT/${output_folder_name}.zip"
+    archive_file="$OUTPUT_ROOT/${model_name}.zip"
 
     if [[ -f "$archive_file" ]]; then
         echo "=== Removing $cfg_file from MODEL_CONFIGS because archive already exists: $archive_file ==="
@@ -231,20 +280,20 @@ MODEL_CONFIGS=("${FILTERED_MODEL_CONFIGS[@]}")
 unset FILTERED_MODEL_CONFIGS
 
 if ((${#MODEL_CONFIGS[@]} == 0)); then
-    echo "All angledpickup model configs already have archives in $OUTPUT_ROOT. Nothing to run."
+    echo "All model configs already have archives in $OUTPUT_ROOT. Nothing to run."
     exit 0
 fi
 
+
 for cfg_file in "${MODEL_CONFIGS[@]}"; do
-    cfg_path="/workspace/robolab/valpa/configs/inference/valpa-angledpickup/$cfg_file"
+    cfg_path="/workspace/robolab/valpa/configs/inference/valpa-reach/ablation/$cfg_file"
 
     if ! cfg_model_name_value="$(cfg_model_name "$cfg_path")"; then
         echo "Could not find modelname in config file: $cfg_file"
         exit 1
     fi
 
-    output_folder_name="$(output_folder_for_model "$cfg_model_name_value")"
-    archive_file="$OUTPUT_ROOT/${output_folder_name}.zip"
+    archive_file="$OUTPUT_ROOT/${cfg_model_name_value}.zip"
 
     if [[ -f "$archive_file" ]]; then
         echo
@@ -253,17 +302,18 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
     fi
 
     cfg_name="${cfg_file%.yaml}"
-    server_log="$SERVER_LOG_DIR/${cfg_name}_serve_policy.log"
+    server_log="$SERVER_LOG_DIR/${cfg_name}_serve_policy_ablation.log"
 
     echo
     echo "=== Starting VALPA server: $cfg_file ==="
-
-    pkill -f "valpa/inference/serve_policy.py.*--port $REMOTE_PORT" || true
+    
+    # Ensure any stray serve_policy processes are killed
+    pkill -f "valpa/inference/serve_policy_ablation.py.*--port $REMOTE_PORT" || true
     sleep 2
-
+    
     PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-        "$ISAAC_PYTHON" valpa/inference/serve_policy.py \
-        --cfg-file "valpa-angledpickup/$cfg_file" \
+        "$ISAAC_PYTHON" valpa/inference/serve_policy_ablation.py \
+        --cfg-file "valpa-reach/ablation/$cfg_file" \
         --host "$SERVER_HOST" \
         --port "$REMOTE_PORT" \
         >"$server_log" 2>&1 &
@@ -288,21 +338,26 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
 
     MODEL_NAMES+=("$model_name")
 
-    echo "=== Running 10 angledpickup eval episodes for hosted model $model_name ==="
+    echo "=== Running eval for hosted model $model_name (${NUM_RUNS_PER_TASK} runs/task) ==="
+    if ! REMOTE_HOST="$REMOTE_HOST" \
+        REMOTE_PORT="$REMOTE_PORT" \
+        HEADLESS="$HEADLESS" \
+        VIDEO_MODE="$VIDEO_MODE" \
+        OUTPUT_FOLDER_NAME="$OUTPUT_FOLDER_NAME" \
+        DEVICE="$DEVICE" \
+        NUM_RUNS_PER_TASK="$NUM_RUNS_PER_TASK" \
+        bash examples/policy/run_reach_eval_10x.sh; then
+        echo "=== Eval failed for $model_name. Skipping archive to preserve partial outputs. ==="
+        cleanup_server
+        exit 1
+    fi
 
-    PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-        "$ISAAC_PYTHON" examples/policy/run_angledpickup_eval.py \
-            --policy valpa \
-            --num-runs 10 \
-            --num-envs 1 \
-            --device "$DEVICE" \
-            --task-dirs wm_tasks/angledpickup \
-            --task AngledPickupKetchupTask AngledPickupBananaTask \
-            --remote-host "$REMOTE_HOST" \
-            --remote-port "$REMOTE_PORT" \
-            --output-folder-name "$output_folder_name" \
-            "${EVAL_EXTRA_ARGS[@]}"
+    if ! check_model_output_complete "$model_name" "$NUM_RUNS_PER_TASK"; then
+        echo "=== Output for $model_name is incomplete. Skipping archive to preserve partial outputs. ==="
+        cleanup_server
+        exit 1
+    fi
 
-    archive_model_output "$output_folder_name"
+    archive_model_output "$model_name"
     cleanup_server
 done

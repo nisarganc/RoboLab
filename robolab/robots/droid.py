@@ -267,16 +267,23 @@ class StepRelativeJointPositionAction(RelativeJointPositionAction):
         self._reference_joint_pos[:] = self._asset.data.joint_pos[:, self._joint_ids]
 
     def apply_actions(self):
-        joint_targets = self._reference_joint_pos + self.processed_actions
+        joint_targets = torch.clamp(
+            self._reference_joint_pos + self.processed_actions,
+            min=0.0,
+            max=np.pi / 4,
+        )
+
         # For Droid IK gripper control, snap post-delta state to binary open/close.
         # `finger_joint` spans [0, pi/4], so 0.5 in normalized space is pi/8.
-        half_closed = np.pi / 8
-        fully_closed = np.pi / 4
-        joint_targets = torch.where(
-            joint_targets > half_closed,
-            torch.full_like(joint_targets, fully_closed),
-            torch.zeros_like(joint_targets),
-        )
+        # half_closed = np.pi / 8
+        # fully_closed = np.pi / 4
+        # joint_targets = torch.where(
+        #     joint_targets > half_closed,
+        #     torch.full_like(joint_targets, fully_closed),
+        #     torch.zeros_like(joint_targets),
+        # )
+
+        # Apply the joint position targets to the asset
         self._asset.set_joint_position_target(joint_targets, joint_ids=self._joint_ids)
 
 

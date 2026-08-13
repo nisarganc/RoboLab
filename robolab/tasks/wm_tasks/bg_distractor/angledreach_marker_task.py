@@ -16,11 +16,11 @@ from robolab.core.task.subtask import Subtask
 from robolab.core.task.task import Task
 
 
-STATUS_PATH = Path(ASSET_DIR) / "wm_tasks" / "AngledReachMarker2Task" / "status.json"
+STATUS_PATH = Path(ASSET_DIR) / "wm_tasks" / "AngledReachMarkerTask" / "status.json"
 
 
 @configclass
-class AngledReachMarker2Terminations:
+class AngledReachMarkerTerminations:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     success = DoneTerm(
         func=angled_reach_object,
@@ -33,7 +33,7 @@ class AngledReachMarker2Terminations:
 
 
 @dataclass
-class AngledReachMarker2Task(Task):
+class AngledReachMarkerTask(Task):
     contact_object_list = [
         "table",
         "mug",
@@ -42,7 +42,7 @@ class AngledReachMarker2Task(Task):
         "dry_erase_marker",
     ]
     scene = import_scene("bin_mug_mustard_marker_bowl2.usda", contact_object_list)
-    terminations = AngledReachMarker2Terminations
+    terminations = AngledReachMarkerTerminations
     instruction = {
         "default": "AngledReachMarker2",
         "vague": "Approach the small marker from an angle",

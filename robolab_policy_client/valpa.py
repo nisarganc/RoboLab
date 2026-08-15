@@ -146,6 +146,26 @@ class VALPADroidEEClient(InferenceClient):
             action = action[None, :]
         return action
     
+    def report_ground_truth(self, obs_dict: dict, *, env_id: int = 0) -> dict:
+        """Match the post-step simulator observation to the pending imagination."""
+        extracted = self._extract_observation(obs_dict, env_id=env_id)
+        return self._request({
+            "method": "report_ground_truth",
+            "obs": {
+                "external_image": extracted["external_image"],
+                "wrist_image": extracted["wrist_image"],
+                "ee_pose": extracted["ee_pose"],
+            },
+            "env_id": env_id,
+        })
+
+    def finish_rollout(self, *, env_id: int = 0) -> dict:
+        """Finalize a matched imagination/ground-truth analysis rollout."""
+        return self._request({
+            "method": "finish_rollout",
+            "env_id": env_id,
+        })
+
     def metadata(self):
         return self._request({"method": "metadata"})
 

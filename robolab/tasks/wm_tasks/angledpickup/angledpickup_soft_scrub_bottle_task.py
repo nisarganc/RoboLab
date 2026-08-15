@@ -16,58 +16,48 @@ from robolab.core.task.subtask import Subtask
 from robolab.core.task.task import Task
 
 
-STATUS_PATH = Path(ASSET_DIR) / "wm_tasks" / "AngledPickupBananaTask" / "status.json"
+TARGET = "soft_scrub_bottle"
+STATUS_PATH = Path(ASSET_DIR) / "wm_tasks" / "AngledPickupSoftScrubBottleTask" / "status.json"
 
 
 @configclass
-class AngledPickupBananaTerminations:
+class AngledPickupSoftScrubBottleTerminations:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     success = DoneTerm(
         func=object_picked_up,
-        params={
-            "object": "banana",
-            "surface": "table",
-            "distance": 0.34510199220528137,
-            "status_path": STATUS_PATH,
-            "angle_tolerance": 0.09,
-        },
+        params={"object": TARGET, "surface": "table", "distance": 0.16},
     )
 
 
 @dataclass
-class AngledPickupBananaTask(Task):
-    contact_object_list = ["table", "bowl", "banana"]
-    scene = import_scene("angledpickup_banana_high_friction.usda", contact_object_list)
-    terminations = AngledPickupBananaTerminations
+class AngledPickupSoftScrubBottleTask(Task):
+    contact_object_list = ["table", "soft_scrub_bottle", "avocado", "dry_erase_marker", "wooden_bowl"]
+    scene = import_scene("angledpickup_soft_scrub_distractors.usda", contact_object_list)
+    terminations = AngledPickupSoftScrubBottleTerminations
     instruction = {
-        "default": "AngledPickupBanana",
-        "vague": "Approach the banana from an angle, grasp it, and lift it",
-        "specific": "Move the robot gripper above the banana beside the bowl with a positive yaw rotation so the fingers follow its long axis, grasp it, and lift it at least 16 cm from the table",
+        "default": "AngledPickupSoftScrubBottle",
+        "vague": "Approach the compact cleaning bottle at an angle, grasp its body, and lift it",
+        "specific": (
+            "Yaw the gripper clockwise to match the bottle's narrow side and sloped neck, grasp "
+            "the raised body below the neck, and lift the bottle at least 16 cm"
+        ),
     }
     episode_steps: int = 165
     angledreach_steps: int = 70
     grasp_steps: int = 10
     pickup_steps: int = 90
-    attributes = [
-        "angled_reach",
-        "pickup",
-        "grasp",
-        "lift",
-        "dominant_yaw",
-        "+rz",
-        "goal",
-    ]
+    attributes = ["angled_reach", "pickup", "grasp", "lift", "dominant_yaw", "-rz", "goal"]
     goal = {
         "mode": "angled_pickup",
-        "object": "banana",
+        "object": TARGET,
         "external_camera": "over_shoulder_right_camera",
         "wrist_camera": "wrist_cam",
     }
     subtasks = [
         Subtask(
-            name="angled_pickup_banana",
+            name="angled_pickup_soft_scrub_bottle",
             conditions={
-                "banana": [
+                TARGET: [
                     (
                         partial(
                             angled_reach_object,
@@ -77,11 +67,11 @@ class AngledPickupBananaTask(Task):
                         ),
                         1.0,
                     ),
-                    (partial(object_grabbed, object="banana"), 1.0),
+                    (partial(object_grabbed, object=TARGET), 1.0),
                     (
                         partial(
                             object_picked_up,
-                            object="banana",
+                            object=TARGET,
                             surface="table",
                             distance=0.16,
                         ),

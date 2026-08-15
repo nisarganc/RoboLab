@@ -19,10 +19,10 @@ import zipfile
 import h5py
 
 
-DEFAULT_ZIP_GLOB = "output_reach/*.zip"
+DEFAULT_ZIP_GLOB = "/anvme/workspace/v106be10-valpa-robolab/.cache/output_angledreach/*.zip"
 
-DISTANCE_THRESHOLD = 0.08
-ANGLE_THRESHOLD_DEGREES = 90.0
+DISTANCE_THRESHOLD = 0.05
+ANGLE_THRESHOLD_DEGREES = 10.0
 
 
 def mean(values: list[float]) -> float:

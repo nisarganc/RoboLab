@@ -16,58 +16,48 @@ from robolab.core.task.subtask import Subtask
 from robolab.core.task.task import Task
 
 
-STATUS_PATH = Path(ASSET_DIR) / "wm_tasks" / "AngledPickupBananaTask" / "status.json"
+TARGET = "lemon"
+STATUS_PATH = Path(ASSET_DIR) / "wm_tasks" / "AngledPickupLemonTask" / "status.json"
 
 
 @configclass
-class AngledPickupBananaTerminations:
+class AngledPickupLemonTerminations:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     success = DoneTerm(
         func=object_picked_up,
-        params={
-            "object": "banana",
-            "surface": "table",
-            "distance": 0.34510199220528137,
-            "status_path": STATUS_PATH,
-            "angle_tolerance": 0.09,
-        },
+        params={"object": TARGET, "surface": "table", "distance": 0.16},
     )
 
 
 @dataclass
-class AngledPickupBananaTask(Task):
-    contact_object_list = ["table", "bowl", "banana"]
-    scene = import_scene("angledpickup_banana_high_friction.usda", contact_object_list)
-    terminations = AngledPickupBananaTerminations
+class AngledPickupLemonTask(Task):
+    contact_object_list = ["table", "lemon", "dry_erase_marker", "rubiks_cube", "clay_plates"]
+    scene = import_scene("angledpickup_lemon_distractors.usda", contact_object_list)
+    terminations = AngledPickupLemonTerminations
     instruction = {
-        "default": "AngledPickupBanana",
-        "vague": "Approach the banana from an angle, grasp it, and lift it",
-        "specific": "Move the robot gripper above the banana beside the bowl with a positive yaw rotation so the fingers follow its long axis, grasp it, and lift it at least 16 cm from the table",
+        "default": "AngledPickupLemon",
+        "vague": "Approach the lemon at an angle, grasp its thick middle, and lift it",
+        "specific": (
+            "Yaw the gripper to follow the lemon's pointed long axis, grasp around "
+            "its thick middle without rolling it, and lift it at least 16 cm"
+        ),
     }
     episode_steps: int = 165
     angledreach_steps: int = 70
     grasp_steps: int = 10
     pickup_steps: int = 90
-    attributes = [
-        "angled_reach",
-        "pickup",
-        "grasp",
-        "lift",
-        "dominant_yaw",
-        "+rz",
-        "goal",
-    ]
+    attributes = ["angled_reach", "pickup", "grasp", "lift", "dominant_yaw", "+rz", "goal"]
     goal = {
         "mode": "angled_pickup",
-        "object": "banana",
+        "object": TARGET,
         "external_camera": "over_shoulder_right_camera",
         "wrist_camera": "wrist_cam",
     }
     subtasks = [
         Subtask(
-            name="angled_pickup_banana",
+            name="angled_pickup_lemon",
             conditions={
-                "banana": [
+                TARGET: [
                     (
                         partial(
                             angled_reach_object,
@@ -77,11 +67,11 @@ class AngledPickupBananaTask(Task):
                         ),
                         1.0,
                     ),
-                    (partial(object_grabbed, object="banana"), 1.0),
+                    (partial(object_grabbed, object=TARGET), 1.0),
                     (
                         partial(
                             object_picked_up,
-                            object="banana",
+                            object=TARGET,
                             surface="table",
                             distance=0.16,
                         ),

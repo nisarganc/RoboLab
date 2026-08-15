@@ -21,7 +21,7 @@ import zipfile
 import h5py
 
 
-DEFAULT_ZIP_GLOB = "output_reach/*.zip"
+DEFAULT_ZIP_GLOB = "/anvme/workspace/v106be10-valpa-robolab/.cache/output_reach/*.zip"
 
 DISTANCE_THRESHOLD = 0.05
 ANGLE_THRESHOLD_DEGREES = 50.0

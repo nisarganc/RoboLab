@@ -87,7 +87,7 @@ cd /workspace/robolab/
 python-rtx-compat examples/demo/run_env_keys.py --headless --task AngledPickupMustardBottleTask
 
 python-rtx-compat examples/demo/run_pickup_home_goals.py \
-  --task AngledPickupRubiksCubeTask \
+  --task AngledPickupLemonTask \
   --headless
 
 python-rtx-compat robolab/tasks/wm_tasks/goal_images.py --task ReachPitcherTask

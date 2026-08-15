@@ -46,7 +46,7 @@ class AngledPickupKetchupTask(Task):
         "ketchup_bottle",
         "cubebox_a02",
     ]
-    scene = import_scene("cartons_on_box.usda", contact_object_list) #import_scene("angledpickup_ketchup_high_friction.usda", contact_object_list)
+    scene = import_scene("angledpickup_ketchup_high_friction.usda", contact_object_list)
     terminations = AngledPickupKetchupTerminations
     instruction = {
         "default": "AngledPickupKetchup",

@@ -283,6 +283,14 @@ class StepRelativeJointPositionAction(RelativeJointPositionAction):
         #     torch.zeros_like(joint_targets),
         # )
 
+        # if joinyt_targets are greater than 3/16 pi, snap to fully closed (pi/4)
+        three_fouths_closed = 3 * np.pi / 16
+        joint_targets = torch.where(
+            joint_targets > three_fouths_closed,
+            torch.full_like(joint_targets, np.pi / 4),
+            joint_targets,
+        )
+
         # Apply the joint position targets to the asset
         self._asset.set_joint_position_target(joint_targets, joint_ids=self._joint_ids)
 

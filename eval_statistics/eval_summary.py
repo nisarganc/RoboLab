@@ -19,10 +19,10 @@ import zipfile
 import h5py
 
 
-DEFAULT_ZIP_GLOB = "/anvme/workspace/v106be10-valpa-robolab/.cache/output_angledreach/*.zip"
+DEFAULT_ZIP_GLOB = "/anvme/workspace/v106be10-valpa-robolab/.cache/output_reach/*.zip"
 
 DISTANCE_THRESHOLD = 0.05
-ANGLE_THRESHOLD_DEGREES = 10.0
+ANGLE_THRESHOLD_DEGREES = 180.0
 
 
 def mean(values: list[float]) -> float:
@@ -87,6 +87,7 @@ def run_result(position, orientation, goal_pos, goal_quat) -> dict[str, float | 
 
         if pos_err < DISTANCE_THRESHOLD and ang_err < ANGLE_THRESHOLD_DEGREES:
             successful = True
+            # selected_index = index
             break
 
     # Always report the last recorded pose. The threshold determines success,
@@ -164,6 +165,7 @@ def summarize(
 
         model_variant = model_variant_from_zip(zip_path)
         tasks_statistics: dict[str, dict[str, object]] = {}
+        model_statistics = empty_task_stats()
 
         with zipfile.ZipFile(zip_path, "r") as zip_file:
             for item, task in iter_run_files(zip_file):
@@ -190,6 +192,13 @@ def summarize(
                 if result["successful"]:
                     stats["successful_runs"] += 1
 
+                model_statistics["total_runs"] += 1
+                model_statistics["selected_indices"].append(result["selected_index"])
+                model_statistics["position_errors"].append(result["position_error"])
+                model_statistics["angle_errors"].append(result["angle_error"])
+                if result["successful"]:
+                    model_statistics["successful_runs"] += 1
+
                 if verbose_runs:
                     status = "success" if result["successful"] else "failed"
                     print(
@@ -214,6 +223,24 @@ def summarize(
                     "position_error_std": stats["position_error_std"],
                     "angle_error_mean_deg": stats["angle_error_mean"],
                     "angle_error_std_deg": stats["angle_error_std"],
+                }
+            )
+
+        if model_statistics["total_runs"]:
+            update_summary_stats(model_statistics)
+            rows.append(
+                {
+                    "model": model_variant,
+                    "task": "ALL_TASKS",
+                    "runs": model_statistics["total_runs"],
+                    "successes": model_statistics["successful_runs"],
+                    "success_rate": model_statistics["success_rate"],
+                    "selected_index_mean": model_statistics["selected_index_mean"],
+                    "selected_index_std": model_statistics["selected_index_std"],
+                    "position_error_mean": model_statistics["position_error_mean"],
+                    "position_error_std": model_statistics["position_error_std"],
+                    "angle_error_mean_deg": model_statistics["angle_error_mean"],
+                    "angle_error_std_deg": model_statistics["angle_error_std"],
                 }
             )
 
@@ -280,7 +307,27 @@ def main() -> None:
     args = parse_args()
     patterns = args.zip_patterns or [DEFAULT_ZIP_GLOB]
     zip_paths = resolve_zip_paths(patterns)
-    tasks_filter = set(args.tasks) if args.tasks else None
+    # tasks_filter = set(args.tasks) if args.tasks else None
+    tasks_filter = ["ReachCoffeeCanTask",
+                    "ReachPitcherTask",
+                    "ReachSpoonBigTask",
+                    "ReachCoffeePotTask",
+                    "ReachBananaTask",
+                    "ReachOrangeJuiceCartonTask",
+                    "ReachYogurtCupTask",
+                    "ReachAppleTask",
+                    "ReachBagelTask",
+                    # "ReachOrangeTask",
+                    "ReachCeramicMugTask"
+    ]
+    # tasks_filter = [
+    #                 # "AngledReachMacaroniTask",
+    #                 "AngledReachBananaTask",
+    #                 "AngledReachDrillTask",
+    #                 # "AngledReachMarkerTask",
+    #                 "AngledReachKetchupTask",
+    #                 "AngledReachCartoon2Task"
+    #                 ]
 
     print(
         "success thresholds: "
@@ -290,9 +337,9 @@ def main() -> None:
 
     rows = summarize(zip_paths, args.assets_root, tasks_filter, args.verbose_runs)
     print_table(rows)
-    write_csv(rows, args.csv)
-    if rows:
-        print(f"\nWrote CSV: {args.csv}")
+    # write_csv(rows, args.csv)
+    # if rows:
+    #     print(f"\nWrote CSV: {args.csv}")
 
 
 if __name__ == "__main__":

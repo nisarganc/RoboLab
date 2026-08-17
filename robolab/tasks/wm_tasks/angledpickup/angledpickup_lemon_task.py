@@ -11,7 +11,7 @@ from isaaclab.utils import configclass
 
 from robolab.constants import ASSET_DIR
 from robolab.core.scenes.utils import import_scene
-from robolab.core.task.conditionals import angled_reach_object, object_grabbed, object_picked_up
+from robolab.core.task.conditionals import object_picked_up
 from robolab.core.task.subtask import Subtask
 from robolab.core.task.task import Task
 
@@ -25,7 +25,13 @@ class AngledPickupLemonTerminations:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     success = DoneTerm(
         func=object_picked_up,
-        params={"object": TARGET, "surface": "table", "distance": 0.16},
+        params={
+                "object": TARGET, 
+                "surface": "table", 
+                "distance": 0.40, 
+                "status_path": STATUS_PATH, 
+                "angle_tolerance": 0.02
+            },
     )
 
 
@@ -42,10 +48,10 @@ class AngledPickupLemonTask(Task):
             "its thick middle without rolling it, and lift it at least 16 cm"
         ),
     }
-    episode_steps: int = 165
-    angledreach_steps: int = 70
+    episode_steps: int = 130
+    angledreach_steps: int = 60
     grasp_steps: int = 10
-    pickup_steps: int = 90
+    pickup_steps: int = 60
     attributes = ["angled_reach", "pickup", "grasp", "lift", "dominant_yaw", "+rz", "goal"]
     goal = {
         "mode": "angled_pickup",
@@ -60,20 +66,12 @@ class AngledPickupLemonTask(Task):
                 TARGET: [
                     (
                         partial(
-                            angled_reach_object,
-                            pos_tolerance=0.04,
-                            angle_tolerance=0.09,
-                            status_path=STATUS_PATH,
-                        ),
-                        1.0,
-                    ),
-                    (partial(object_grabbed, object=TARGET), 1.0),
-                    (
-                        partial(
                             object_picked_up,
                             object=TARGET,
                             surface="table",
-                            distance=0.16,
+                            distance=0.40,
+                            status_path=STATUS_PATH,
+                            angle_tolerance=0.02,
                         ),
                         1.0,
                     ),

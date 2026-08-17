@@ -173,7 +173,7 @@ class RobolabDefaultEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.physx.contact_offset = 0.02
         self.sim.physx.rest_offset = 0.01
         self.sim.physx.num_position_iterations = 32
-        self.sim.physx.num_velocity_iterations = 1
+        self.sim.physx.num_velocity_iterations = 4
         self.sim.physx.bounce_threshold_velocity = 0.2
         self.sim.physx.max_depenetration_velocity = 100.0
         self.sim.physx.solver_type = 1

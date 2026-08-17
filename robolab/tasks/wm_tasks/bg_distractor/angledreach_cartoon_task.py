@@ -50,7 +50,7 @@ class AngledReachCartoonTask(Task):
         "vague": "Reach the orange juice carton near the center of the packing table with a yawed approach",
         "specific": "Move the robot gripper above the orange juice carton lying on the table with a yawed approach, such that the gripper is aligned with the longer side of the carton. The orange juice carton is located near the center of the packing table.",
     }
-    episode_steps: int = 75
+    episode_steps: int = 100
     attributes = ["angled_reach", "dominant_yaw", "+rz", "goal"]
     goal = {
         "mode": "angled_reach",

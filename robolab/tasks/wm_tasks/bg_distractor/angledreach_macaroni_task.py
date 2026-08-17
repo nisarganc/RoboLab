@@ -42,7 +42,7 @@ class AngledReachMacaroniTask(Task):
         "vague": "Reach the upright food box with a yawed approach",
         "specific": "Move the robot gripper beside the orange macaroni-and-cheese box slightly left of the robot with a negative yaw rotation so the fingers align with its thin side, without grasping it",
     }
-    episode_steps: int = 75
+    episode_steps: int = 100
     attributes = ["angled_reach", "dominant_yaw", "-rz", "goal"]
     goal = {
         "mode": "angled_reach",

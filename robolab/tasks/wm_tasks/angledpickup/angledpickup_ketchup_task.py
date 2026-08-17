@@ -26,9 +26,9 @@ class AngledPickupKetchupTerminations:
         params={
             "object": "ketchup_bottle",
             "surface": "table",
-            "distance": 0.2058982690388593,
+            "distance": 0.40,
             "status_path": STATUS_PATH,
-            "angle_tolerance": 0.09,
+            "angle_tolerance": 0.02,
         },
     )
 
@@ -53,10 +53,10 @@ class AngledPickupKetchupTask(Task):
         "vague": "Reach the ketchup bottle with a yawed wrist, grasp it, and lift it up",
         "specific": "Move the robot gripper to the ketchup bottle with the wrist yawed to face the bottle from the side, grasp the bottle, and lift it off the table",
     }
-    episode_steps: int = 165
-    angledreach_steps: int = 70
+    episode_steps: int = 130
+    angledreach_steps: int = 60
     grasp_steps: int = 10
-    pickup_steps: int = 90
+    pickup_steps: int = 60
 
     attributes = ["angled_reach", "pickup", "grasp", "lift", "dominant_yaw", "+rz", "goal"]
     goal = {
@@ -75,7 +75,9 @@ class AngledPickupKetchupTask(Task):
                             object_picked_up,
                             object="ketchup_bottle",
                             surface="table",
-                            distance=0.16,
+                            distance=0.40,
+                            status_path=STATUS_PATH,
+                            angle_tolerance=0.02,
                         ),
                         1.0,
                     ),

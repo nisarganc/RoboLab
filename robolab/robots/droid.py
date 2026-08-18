@@ -106,10 +106,12 @@ class DroidCfg:
             ),
             "gripper": ImplicitActuatorCfg(
                 joint_names_expr=["finger_joint"],
-                effort_limit=80.0,
+                stiffness=None,
+                damping=None,
+                # effort_limit=150.0,
                 velocity_limit=5.0, #2.175,
-                stiffness=2000.0,
-                damping=50.0,
+                # stiffness=1000.0,
+                # damping=40.0,
             ),
         },
     )
@@ -285,7 +287,7 @@ class StepRelativeJointPositionAction(RelativeJointPositionAction):
         three_fouths_closed = 3 * np.pi / 16
         joint_targets = torch.where(
             joint_targets > three_fouths_closed,
-            torch.full_like(joint_targets, np.pi / 5),
+            torch.full_like(joint_targets, np.pi / 4),
             joint_targets,
         )
 

@@ -19,10 +19,42 @@ import zipfile
 import h5py
 
 
-DEFAULT_ZIP_GLOB = "/anvme/workspace/v106be10-valpa-robolab/.cache/output_reach/*.zip"
+DEFAULT_ZIP_GLOB = "/anvme/workspace/v106be10-valpa-robolab/.cache/output_angledreach/*.zip"
 
 DISTANCE_THRESHOLD = 0.05
-ANGLE_THRESHOLD_DEGREES = 180.0
+ANGLE_THRESHOLD_DEGREES = 12.0
+
+TASK_NAME_MAP = {
+    "ReachAppleTask": "Apple",
+    "ReachBagelTask": "Bagel",
+    "ReachBananaTask": "Banana",
+    "ReachCeramicMugTask": "Ceramic Mug",
+    "ReachCoffeeCanTask": "Coffee Can",
+    "ReachCoffeePotTask": "Coffee Pot",
+    "ReachOrangeJuiceCartonTask": "Juice Carton",
+    "ReachOrangeTask": "Orange",
+    "ReachPitcherTask": "White Pitcher",
+    "ReachSpoonBigTask": "Large Spoon",
+    "ReachYogurtCupTask": "Yogurt Cup",
+    "AngledReachBananaTask": "Banana",
+    "AngledReachCartoonTask": "Orange Juice Carton 2",
+    "AngledReachCartoon2Task": "Orange Juice Carton",
+    "AngledReachDrillTask": "Cordless Drill",
+    "AngledReachKetchupTask": "Ketchup Bottle",
+    "AngledReachMacaroniTask": "Macaroni Carton",
+    "AngledReachMarkerTask": "Dry-Erase Marker",
+}
+
+MODEL_NAME_MAP  = {
+    "right_vjepa": r"SV$_{\mathbf{VJ}}$",
+    "right_dinov3": r"SV$_{\mathbf{D3}}$",
+    "wrist_vjepa": r"WV$_{\mathbf{VJ}}$",
+    "wrist_dinov3": r"WV$_{\mathbf{D3}}$",
+    "ind_vjepa": r"DI$_{\mathbf{VJ}}$",
+    "ind_dinov3": r"DI$_{\mathbf{D3}}$",
+    "dual_vjepa": r"DJ$_{\mathbf{VJ}}$",
+    "dual_dinov3": r"DJ$_{\mathbf{D3}}$",
+}
 
 
 def mean(values: list[float]) -> float:
@@ -271,6 +303,117 @@ def write_csv(rows: list[dict[str, object]], csv_path: Path) -> None:
         writer.writerows(rows)
 
 
+def write_success_rate_heatmap(
+    rows: list[dict[str, object]],
+    output_path: Path,
+    task_order: list[str] | None = None,
+) -> None:
+    """Write a model-by-task heatmap of success rates."""
+    if not rows:
+        return
+
+    # Import plotting only when requested so the statistics code can still be
+    # imported in environments where matplotlib is unavailable.
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle
+
+    available_models = {str(row["model"]) for row in rows}
+    models = []
+    model_order = [
+        "right_vjepa",
+        "wrist_vjepa",
+        "ind_vjepa",
+        "dual_vjepa",
+        "right_dinov3",
+        "wrist_dinov3",
+        "ind_dinov3",
+        "dual_dinov3",
+    ]
+    for model in model_order:
+        if model in available_models:
+            models.append(model)
+    models.extend(sorted(available_models.difference(models)))
+    available_tasks = {
+        str(row["task"]) for row in rows if row["task"] != "ALL_TASKS"
+    }
+    if not available_tasks:
+        return
+    tasks = (
+        [task for task in task_order if task in available_tasks]
+        if task_order is not None
+        else sorted(available_tasks)
+    )
+    tasks.extend(sorted(available_tasks.difference(tasks)))
+    rates = {
+        (str(row["model"]), str(row["task"])): float(row["success_rate"])
+        for row in rows
+        if row["task"] != "ALL_TASKS"
+    }
+    matrix = [[rates.get((model, task), math.nan) for task in tasks] for model in models]
+
+    figure, axis = plt.subplots(figsize=(1280 / 300, 720 / 300), dpi=300)
+    color_map = plt.get_cmap("Greens").copy()
+    color_map.set_bad(color="#d9d9d9")
+    axis.imshow(matrix, cmap=color_map, vmin=0.0, vmax=1.0, aspect="auto")
+
+    task_labels = [str(index + 1) for index, _ in enumerate(tasks)]
+    model_labels = []
+    for model in models:
+        display_name = MODEL_NAME_MAP.get(model, model)
+        model_labels.append(display_name)
+    header_style = {
+        "facecolor": "#f2f2f2",
+        "edgecolor": "#c4c4c4",
+        "linewidth": 0.6,
+    }
+    axis.add_patch(Rectangle((-1.5, -1.5), 1.0, 1.0, **header_style))
+    for task_index, task_label in enumerate(task_labels):
+        axis.add_patch(Rectangle((task_index - 0.5, -1.5), 1.0, 1.0, **header_style))
+        axis.text(
+            task_index,
+            -1.0,
+            task_label,
+            ha="center",
+            va="center",
+            fontfamily="DejaVu Sans",
+            fontsize=6.0,
+            fontweight="bold",
+            clip_on=True,
+        )
+    for model_index, model_label in enumerate(model_labels):
+        axis.add_patch(Rectangle((-1.5, model_index - 0.5), 1.0, 1.0, **header_style))
+        axis.text(
+            -1.0,
+            model_index,
+            model_label,
+            ha="center",
+            va="center",
+            fontfamily="DejaVu Sans",
+            fontsize=6.5,
+            fontweight="bold",
+            clip_on=True,
+        )
+
+    axis.set_xticks([])
+    axis.set_yticks([])
+    axis.set_xlim(-1.5, len(tasks) - 0.5)
+    axis.set_ylim(len(models) - 0.5, -1.5)
+    for spine in axis.spines.values():
+        spine.set_edgecolor("#c4c4c4")
+        spine.set_linewidth(0.6)
+    figure.subplots_adjust(left=0.0, right=1.0, bottom=0.0, top=1.0)
+    for model_index, model in enumerate(models):
+        for task_index, task in enumerate(tasks):
+            rate = rates.get((model, task))
+            label = "N/A" if rate is None else f"{rate:.0%}"
+            text_color = "white" if rate is not None and rate >= 0.6 else "black"
+            axis.text(task_index, model_index, label, ha="center", va="center", color=text_color, fontsize=4.8, fontweight="bold")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output_path, format="pdf", bbox_inches="tight", pad_inches=0.0)
+    plt.close(figure)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -299,6 +442,12 @@ def parse_args() -> argparse.Namespace:
         default=Path("pickup_error_summary.csv"),
         help="CSV output path. Default: pickup_error_summary.csv",
     )
+    parser.add_argument(
+        "--heatmap",
+        type=Path,
+        default=Path(__file__).resolve().parents[1] / "all_models_success_rate_heatmap.pdf",
+        help="Success-rate heatmap output path.",
+    )
     parser.add_argument("--verbose-runs", action="store_true")
     return parser.parse_args()
 
@@ -308,26 +457,26 @@ def main() -> None:
     patterns = args.zip_patterns or [DEFAULT_ZIP_GLOB]
     zip_paths = resolve_zip_paths(patterns)
     # tasks_filter = set(args.tasks) if args.tasks else None
-    tasks_filter = ["ReachCoffeeCanTask",
-                    "ReachPitcherTask",
-                    "ReachSpoonBigTask",
-                    "ReachCoffeePotTask",
-                    "ReachBananaTask",
-                    "ReachOrangeJuiceCartonTask",
-                    "ReachYogurtCupTask",
-                    "ReachAppleTask",
-                    "ReachBagelTask",
-                    # "ReachOrangeTask",
-                    "ReachCeramicMugTask"
-    ]
-    # tasks_filter = [
-    #                 # "AngledReachMacaroniTask",
-    #                 "AngledReachBananaTask",
-    #                 "AngledReachDrillTask",
-    #                 # "AngledReachMarkerTask",
-    #                 "AngledReachKetchupTask",
-    #                 "AngledReachCartoon2Task"
-    #                 ]
+    # tasks_filter = ["ReachCoffeePotTask",
+    #                 "ReachCoffeeCanTask",
+    #                 # "ReachSpoonBigTask",
+    #                 "ReachBananaTask",
+    #                 "ReachOrangeJuiceCartonTask",
+    #                 "ReachYogurtCupTask",
+    #                 "ReachAppleTask",
+    #                 "ReachOrangeTask",
+    #                 "ReachBagelTask",
+    #                 "ReachPitcherTask",
+    #                 "ReachCeramicMugTask"
+    # ]
+    tasks_filter = [
+                    # "AngledReachMacaroniTask",
+                    "AngledReachBananaTask",
+                    "AngledReachDrillTask",
+                    # "AngledReachMarkerTask",
+                    "AngledReachKetchupTask",
+                    "AngledReachCartoon2Task"
+                    ]
 
     print(
         "success thresholds: "
@@ -337,6 +486,9 @@ def main() -> None:
 
     rows = summarize(zip_paths, args.assets_root, tasks_filter, args.verbose_runs)
     print_table(rows)
+    write_success_rate_heatmap(rows, args.heatmap, tasks_filter)
+    if rows:
+        print(f"\nWrote heatmap: {args.heatmap}")
     # write_csv(rows, args.csv)
     # if rows:
     #     print(f"\nWrote CSV: {args.csv}")

@@ -106,12 +106,12 @@ class DroidCfg:
             ),
             "gripper": ImplicitActuatorCfg(
                 joint_names_expr=["finger_joint"],
-                stiffness=None,
-                damping=None,
-                # effort_limit=150.0,
-                velocity_limit=5.0, #2.175,
-                # stiffness=1000.0,
-                # damping=40.0,
+                # stiffness=None,
+                # damping=None,
+                effort_limit=20.0,
+                velocity_limit=1.0, #2.175,
+                stiffness=500.0,
+                damping=30.0,
             ),
         },
     )
@@ -275,19 +275,19 @@ class StepRelativeJointPositionAction(RelativeJointPositionAction):
 
         # For Droid IK gripper control, snap post-delta state to binary open/close.
         # `finger_joint` spans [0, pi/4], so 0.5 in normalized space is pi/8.
-        # half_closed = np.pi / 8
-        # fully_closed = np.pi / 4
+        half_closed = np.pi / 8
+        fully_closed = np.pi / 4
         # joint_targets = torch.where(
         #     joint_targets > half_closed,
         #     torch.full_like(joint_targets, fully_closed),
         #     torch.zeros_like(joint_targets),
         # )
 
-        # if joinyt_targets are greater than 3/16 pi, snap to fully closed (pi/4)
-        three_fouths_closed = 3 * np.pi / 16
+        # # if joinyt_targets are greater than 3/16 pi, snap to fully closed (pi/4)
+        almost_closed = 3 * np.pi / 16
         joint_targets = torch.where(
-            joint_targets > three_fouths_closed,
-            torch.full_like(joint_targets, np.pi / 4),
+            joint_targets > half_closed,
+            torch.full_like(joint_targets, fully_closed),
             joint_targets,
         )
 

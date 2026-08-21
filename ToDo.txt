@@ -78,7 +78,7 @@ apptainer overlay create --size 4096 \
   robolab-valpa-overlay.img
 
 apptainer shell --nv \
-  --overlay overlay_reach_test.img \
+  --overlay overlay_interactive.img \
   --bind "$PWD/RoboLab:/workspace/robolab" \
   --bind "$PWD/.cache/checkpoints:/workspace/robolab/checkpoints" \
   robolab-valpa.sif
@@ -91,3 +91,8 @@ python-rtx-compat examples/demo/run_pickup_home_goals.py \
   --headless
 
 python-rtx-compat robolab/tasks/wm_tasks/goal_images.py --task ReachPitcherTask
+
+for angled reach changes 
+droid.py: change to three_fourth
+
+python-rtx-compat eval_statistics/metrics_analysis.py /workspace/robolab/valpa/logs_pickup1/ind_dinov3_AngledPickupLemon_run0_env0/run_metrics.pt

@@ -170,8 +170,8 @@ class RobolabDefaultEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.physx.gpu_heap_capacity = 2**30
         self.sim.physx.gpu_collision_stack_size = 2**30
         self.sim.physx.enable_ccd = True
-        self.sim.physx.contact_offset = 0.02
-        self.sim.physx.rest_offset = 0.01
+        self.sim.physx.contact_offset = 0.0005
+        self.sim.physx.rest_offset = 0.001
         self.sim.physx.num_position_iterations = 32
         self.sim.physx.num_velocity_iterations = 4
         self.sim.physx.bounce_threshold_velocity = 0.2

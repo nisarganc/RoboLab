@@ -484,14 +484,17 @@ def main() -> None:
         f"angle error < {ANGLE_THRESHOLD_DEGREES} deg"
     )
 
+
+    # statistics
     rows = summarize(zip_paths, args.assets_root, tasks_filter, args.verbose_runs)
     print_table(rows)
-    write_success_rate_heatmap(rows, args.heatmap, tasks_filter)
-    if rows:
-        print(f"\nWrote heatmap: {args.heatmap}")
+
     # write_csv(rows, args.csv)
-    # if rows:
-    #     print(f"\nWrote CSV: {args.csv}")
+    # print(f"\nWrote CSV: {args.csv}")
+
+    # headmap of success rates by model and task
+    # write_success_rate_heatmap(rows, args.heatmap, tasks_filter)
+    # print(f"\nWrote heatmap: {args.heatmap}")
 
 
 if __name__ == "__main__":

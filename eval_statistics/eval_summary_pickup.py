@@ -1,9 +1,9 @@
-"""Summarize angled-reach position and angle error by model and task.
+"""Summarize pickup position and angle error by model and task.
 
-For each run, this script does NOT blindly use the final ee_pose. It scans the
-trajectory for the first timestep that satisfies the success criteria. If the
-run succeeds, position and angle errors are computed at that first-success
-index. If the run never succeeds, errors are computed at the final valid index.
+For each run, this script scans the trajectory to determine whether the success
+criteria were ever satisfied. Position and angle errors are always computed at
+the final recorded timestep, so the reported means do not depend on which
+timestep first crossed the success threshold.
 """
 
 from __future__ import annotations
@@ -19,10 +19,42 @@ import zipfile
 import h5py
 
 
-DEFAULT_ZIP_GLOB = "output_angledreach/*.zip" #"output_angled/dual_dinov3_roboarena_angledreach_orangejuice.zip" 
+DEFAULT_ZIP_GLOB = "/anvme/workspace/v106be10-valpa-robolab/.cache/output_angledreach/*.zip"
 
 DISTANCE_THRESHOLD = 0.05
-ANGLE_THRESHOLD_DEGREES = 15.0
+ANGLE_THRESHOLD_DEGREES = 12.0
+
+TASK_NAME_MAP = {
+    "ReachAppleTask": "Apple",
+    "ReachBagelTask": "Bagel",
+    "ReachBananaTask": "Banana",
+    "ReachCeramicMugTask": "Ceramic Mug",
+    "ReachCoffeeCanTask": "Coffee Can",
+    "ReachCoffeePotTask": "Coffee Pot",
+    "ReachOrangeJuiceCartonTask": "Juice Carton",
+    "ReachOrangeTask": "Orange",
+    "ReachPitcherTask": "White Pitcher",
+    "ReachSpoonBigTask": "Large Spoon",
+    "ReachYogurtCupTask": "Yogurt Cup",
+    "AngledReachBananaTask": "Banana",
+    "AngledReachCartoonTask": "Orange Juice Carton 2",
+    "AngledReachCartoon2Task": "Orange Juice Carton",
+    "AngledReachDrillTask": "Cordless Drill",
+    "AngledReachKetchupTask": "Ketchup Bottle",
+    "AngledReachMacaroniTask": "Macaroni Carton",
+    "AngledReachMarkerTask": "Dry-Erase Marker",
+}
+
+MODEL_NAME_MAP  = {
+    "right_vjepa": r"SV$_{\mathbf{VJ}}$",
+    "right_dinov3": r"SV$_{\mathbf{D3}}$",
+    "wrist_vjepa": r"WV$_{\mathbf{VJ}}$",
+    "wrist_dinov3": r"WV$_{\mathbf{D3}}$",
+    "ind_vjepa": r"DI$_{\mathbf{VJ}}$",
+    "ind_dinov3": r"DI$_{\mathbf{D3}}$",
+    "dual_vjepa": r"DJ$_{\mathbf{VJ}}$",
+    "dual_dinov3": r"DJ$_{\mathbf{D3}}$",
+}
 
 
 def mean(values: list[float]) -> float:
@@ -57,7 +89,7 @@ def quat_angle_error_degrees_wxyz(current_quat, target_quat) -> float:
 
 def model_variant_from_zip(zip_path: Path) -> str:
     name = zip_path.stem
-    suffix = "_angledreach"
+    suffix = "_pickup"
     if name.endswith(suffix):
         return name[: -len(suffix)]
     return name
@@ -73,7 +105,7 @@ def load_goal_pose(task: str, assets_root: Path) -> tuple[list[float], list[floa
 
 
 def run_result(position, orientation, goal_pos, goal_quat) -> dict[str, float | int | bool]:
-    """Return errors at first-success index, otherwise at final valid index."""
+    """Return success over the trajectory and errors at the final valid index."""
     num_steps = int(position.shape[0])
     if num_steps == 0:
         raise ValueError("empty ee_pose trajectory")
@@ -86,12 +118,12 @@ def run_result(position, orientation, goal_pos, goal_quat) -> dict[str, float | 
         ang_err = quat_angle_error_degrees_wxyz(orientation[index, :], goal_quat)
 
         if pos_err < DISTANCE_THRESHOLD and ang_err < ANGLE_THRESHOLD_DEGREES:
-            selected_index = index
             successful = True
+            # selected_index = index
             break
 
-    # Compute the reported errors explicitly at the selected index. This is the
-    # first success index for successes and the final valid index for failures.
+    # Always report the last recorded pose. The threshold determines success,
+    # but it does not determine which pose contributes to the error means.
     selected_pos_err = euclidean_distance(position[selected_index, :], goal_pos)
     selected_ang_err = quat_angle_error_degrees_wxyz(orientation[selected_index, :], goal_quat)
 
@@ -165,6 +197,7 @@ def summarize(
 
         model_variant = model_variant_from_zip(zip_path)
         tasks_statistics: dict[str, dict[str, object]] = {}
+        model_statistics = empty_task_stats()
 
         with zipfile.ZipFile(zip_path, "r") as zip_file:
             for item, task in iter_run_files(zip_file):
@@ -191,6 +224,13 @@ def summarize(
                 if result["successful"]:
                     stats["successful_runs"] += 1
 
+                model_statistics["total_runs"] += 1
+                model_statistics["selected_indices"].append(result["selected_index"])
+                model_statistics["position_errors"].append(result["position_error"])
+                model_statistics["angle_errors"].append(result["angle_error"])
+                if result["successful"]:
+                    model_statistics["successful_runs"] += 1
+
                 if verbose_runs:
                     status = "success" if result["successful"] else "failed"
                     print(
@@ -215,6 +255,24 @@ def summarize(
                     "position_error_std": stats["position_error_std"],
                     "angle_error_mean_deg": stats["angle_error_mean"],
                     "angle_error_std_deg": stats["angle_error_std"],
+                }
+            )
+
+        if model_statistics["total_runs"]:
+            update_summary_stats(model_statistics)
+            rows.append(
+                {
+                    "model": model_variant,
+                    "task": "ALL_TASKS",
+                    "runs": model_statistics["total_runs"],
+                    "successes": model_statistics["successful_runs"],
+                    "success_rate": model_statistics["success_rate"],
+                    "selected_index_mean": model_statistics["selected_index_mean"],
+                    "selected_index_std": model_statistics["selected_index_std"],
+                    "position_error_mean": model_statistics["position_error_mean"],
+                    "position_error_std": model_statistics["position_error_std"],
+                    "angle_error_mean_deg": model_statistics["angle_error_mean"],
+                    "angle_error_std_deg": model_statistics["angle_error_std"],
                 }
             )
 
@@ -245,6 +303,117 @@ def write_csv(rows: list[dict[str, object]], csv_path: Path) -> None:
         writer.writerows(rows)
 
 
+def write_success_rate_heatmap(
+    rows: list[dict[str, object]],
+    output_path: Path,
+    task_order: list[str] | None = None,
+) -> None:
+    """Write a model-by-task heatmap of success rates."""
+    if not rows:
+        return
+
+    # Import plotting only when requested so the statistics code can still be
+    # imported in environments where matplotlib is unavailable.
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle
+
+    available_models = {str(row["model"]) for row in rows}
+    models = []
+    model_order = [
+        "right_vjepa",
+        "wrist_vjepa",
+        "ind_vjepa",
+        "dual_vjepa",
+        "right_dinov3",
+        "wrist_dinov3",
+        "ind_dinov3",
+        "dual_dinov3",
+    ]
+    for model in model_order:
+        if model in available_models:
+            models.append(model)
+    models.extend(sorted(available_models.difference(models)))
+    available_tasks = {
+        str(row["task"]) for row in rows if row["task"] != "ALL_TASKS"
+    }
+    if not available_tasks:
+        return
+    tasks = (
+        [task for task in task_order if task in available_tasks]
+        if task_order is not None
+        else sorted(available_tasks)
+    )
+    tasks.extend(sorted(available_tasks.difference(tasks)))
+    rates = {
+        (str(row["model"]), str(row["task"])): float(row["success_rate"])
+        for row in rows
+        if row["task"] != "ALL_TASKS"
+    }
+    matrix = [[rates.get((model, task), math.nan) for task in tasks] for model in models]
+
+    figure, axis = plt.subplots(figsize=(1280 / 300, 720 / 300), dpi=300)
+    color_map = plt.get_cmap("Greens").copy()
+    color_map.set_bad(color="#d9d9d9")
+    axis.imshow(matrix, cmap=color_map, vmin=0.0, vmax=1.0, aspect="auto")
+
+    task_labels = [str(index + 1) for index, _ in enumerate(tasks)]
+    model_labels = []
+    for model in models:
+        display_name = MODEL_NAME_MAP.get(model, model)
+        model_labels.append(display_name)
+    header_style = {
+        "facecolor": "#f2f2f2",
+        "edgecolor": "#c4c4c4",
+        "linewidth": 0.6,
+    }
+    axis.add_patch(Rectangle((-1.5, -1.5), 1.0, 1.0, **header_style))
+    for task_index, task_label in enumerate(task_labels):
+        axis.add_patch(Rectangle((task_index - 0.5, -1.5), 1.0, 1.0, **header_style))
+        axis.text(
+            task_index,
+            -1.0,
+            task_label,
+            ha="center",
+            va="center",
+            fontfamily="DejaVu Sans",
+            fontsize=6.0,
+            fontweight="bold",
+            clip_on=True,
+        )
+    for model_index, model_label in enumerate(model_labels):
+        axis.add_patch(Rectangle((-1.5, model_index - 0.5), 1.0, 1.0, **header_style))
+        axis.text(
+            -1.0,
+            model_index,
+            model_label,
+            ha="center",
+            va="center",
+            fontfamily="DejaVu Sans",
+            fontsize=6.5,
+            fontweight="bold",
+            clip_on=True,
+        )
+
+    axis.set_xticks([])
+    axis.set_yticks([])
+    axis.set_xlim(-1.5, len(tasks) - 0.5)
+    axis.set_ylim(len(models) - 0.5, -1.5)
+    for spine in axis.spines.values():
+        spine.set_edgecolor("#c4c4c4")
+        spine.set_linewidth(0.6)
+    figure.subplots_adjust(left=0.0, right=1.0, bottom=0.0, top=1.0)
+    for model_index, model in enumerate(models):
+        for task_index, task in enumerate(tasks):
+            rate = rates.get((model, task))
+            label = "N/A" if rate is None else f"{rate:.0%}"
+            text_color = "white" if rate is not None and rate >= 0.6 else "black"
+            axis.text(task_index, model_index, label, ha="center", va="center", color=text_color, fontsize=4.8, fontweight="bold")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output_path, format="pdf", bbox_inches="tight", pad_inches=0.0)
+    plt.close(figure)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -252,7 +421,7 @@ def parse_args() -> argparse.Namespace:
         dest="zip_patterns",
         action="append",
         default=None,
-        help="Zip path or glob. Can be repeated. Default: output_angledreach/*.zip",
+        help="Zip path or glob. Can be repeated. Default: output_pickup/*.zip",
     )
     parser.add_argument(
         "--assets-root",
@@ -270,8 +439,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--csv",
         type=Path,
-        default=Path("angledreach_error_summary.csv"),
-        help="CSV output path. Default: angledreach_error_summary.csv",
+        default=Path("pickup_error_summary.csv"),
+        help="CSV output path. Default: pickup_error_summary.csv",
+    )
+    parser.add_argument(
+        "--heatmap",
+        type=Path,
+        default=Path(__file__).resolve().parents[1] / "all_models_success_rate_heatmap.pdf",
+        help="Success-rate heatmap output path.",
     )
     parser.add_argument("--verbose-runs", action="store_true")
     return parser.parse_args()
@@ -281,7 +456,27 @@ def main() -> None:
     args = parse_args()
     patterns = args.zip_patterns or [DEFAULT_ZIP_GLOB]
     zip_paths = resolve_zip_paths(patterns)
-    tasks_filter = set(args.tasks) if args.tasks else None
+    # tasks_filter = set(args.tasks) if args.tasks else None
+    # tasks_filter = ["ReachCoffeePotTask",
+    #                 "ReachCoffeeCanTask",
+    #                 # "ReachSpoonBigTask",
+    #                 "ReachBananaTask",
+    #                 "ReachOrangeJuiceCartonTask",
+    #                 "ReachYogurtCupTask",
+    #                 "ReachAppleTask",
+    #                 "ReachOrangeTask",
+    #                 "ReachBagelTask",
+    #                 "ReachPitcherTask",
+    #                 "ReachCeramicMugTask"
+    # ]
+    tasks_filter = [
+                    # "AngledReachMacaroniTask",
+                    "AngledReachBananaTask",
+                    "AngledReachDrillTask",
+                    # "AngledReachMarkerTask",
+                    "AngledReachKetchupTask",
+                    "AngledReachCartoon2Task"
+                    ]
 
     print(
         "success thresholds: "
@@ -289,12 +484,16 @@ def main() -> None:
         f"angle error < {ANGLE_THRESHOLD_DEGREES} deg"
     )
 
+    # statistics
     rows = summarize(zip_paths, args.assets_root, tasks_filter, args.verbose_runs)
     print_table(rows)
-    write_csv(rows, args.csv)
-    if rows:
-        print(f"\nWrote CSV: {args.csv}")
 
+    # write_csv(rows, args.csv)
+    # print(f"\nWrote CSV: {args.csv}")
+
+    # headmap of success rates by model and task
+    # write_success_rate_heatmap(rows, args.heatmap, tasks_filter)
+    # print(f"\nWrote heatmap: {args.heatmap}")
 
 if __name__ == "__main__":
     main()

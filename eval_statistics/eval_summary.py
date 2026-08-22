@@ -19,10 +19,10 @@ import zipfile
 import h5py
 
 
-DEFAULT_ZIP_GLOB = "/anvme/workspace/v106be10-valpa-robolab/.cache/output_angledreach/*.zip"
+DEFAULT_ZIP_GLOB = "/anvme/workspace/v106be10-valpa-robolab/.cache/output_cameraperturberations/*.zip"
 
 DISTANCE_THRESHOLD = 0.05
-ANGLE_THRESHOLD_DEGREES = 12.0
+ANGLE_THRESHOLD_DEGREES = 350.0
 
 TASK_NAME_MAP = {
     "ReachAppleTask": "Apple",
@@ -456,7 +456,7 @@ def main() -> None:
     args = parse_args()
     patterns = args.zip_patterns or [DEFAULT_ZIP_GLOB]
     zip_paths = resolve_zip_paths(patterns)
-    # tasks_filter = set(args.tasks) if args.tasks else None
+    tasks_filter = set(args.tasks) if args.tasks else None
     # tasks_filter = ["ReachCoffeePotTask",
     #                 "ReachCoffeeCanTask",
     #                 # "ReachSpoonBigTask",
@@ -469,14 +469,14 @@ def main() -> None:
     #                 "ReachPitcherTask",
     #                 "ReachCeramicMugTask"
     # ]
-    tasks_filter = [
-                    "AngledReachMacaroniTask",
-                    # "AngledReachBananaTask",
-                    "AngledReachDrillTask",
-                    # "AngledReachMarkerTask",
-                    "AngledReachKetchupTask",
-                    "AngledReachCartoon2Task"
-                    ]
+    # tasks_filter = [
+    #                 "AngledReachMacaroniTask",
+    #                 # "AngledReachBananaTask",
+    #                 "AngledReachDrillTask",
+    #                 # "AngledReachMarkerTask",
+    #                 "AngledReachKetchupTask",
+    #                 "AngledReachCartoon2Task"
+    #                 ]
 
     print(
         "success thresholds: "

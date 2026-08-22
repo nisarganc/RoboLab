@@ -1,11 +1,12 @@
-"""Report three-phase pose errors and angled-reach success for pickup runs.
+"""Report three-phase pose errors and success rates for angled pickup runs.
 
 Each 130-step trajectory is evaluated at the end of its three fixed phases:
 reach (index 59), grasp (index 69), and lift (index 129).  The corresponding
 goals are ``last_ee_pose``, ``last_ee_pose_2``, and ``last_ee_pose_3`` from the
 task's status.json.  Angled-reach success uses the same thresholds as
 eval_summary.py and is true when they are jointly met at any of the first 60
-steps.  Error aggregates include every run, whether successful or not.
+steps.  Error aggregates include every run, whether successful or not.  Lift
+success additionally requires the target object to remain held at the end.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import argparse
 import csv
 import glob
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import zipfile
 
 import h5py
@@ -28,8 +29,12 @@ from eval_summary import (
 ANGLE_THRESHOLD_DEGREES = 20.0
 DISTANCE_THRESHOLD = 0.15
 
-FINAL_DISTANCE_THRESHOLD = 0.30
-FINAL_ANGLE_THRESHOLD_DEGREES = 30.0
+FINAL_DISTANCE_THRESHOLD = 0.20
+FINAL_ANGLE_THRESHOLD_DEGREES = 350.0
+
+# Maximum allowed change in the target object's position relative to the end
+# effector over the lift phase.
+MAX_OBJECT_EE_RELATIVE_MOTION = 0.2
 
 RESULTS_ROOT = Path(
     "/anvme/workspace/v106be10-valpa-robolab/.cache/output_angledpickup"
@@ -111,10 +116,76 @@ def load_phase_goals(task: str, assets_root: Path) -> dict[str, tuple[list[float
     return goals
 
 
+def load_target_object(
+    zip_file: zipfile.ZipFile,
+    run_item: zipfile.ZipInfo,
+) -> str:
+    """Read the target rigid-object name from the cached task configuration."""
+    config_name = str(PurePosixPath(run_item.filename).with_name("env_cfg.json"))
+    try:
+        config = json.loads(zip_file.read(config_name))
+        target_object = config["goal"]["object"]
+    except (KeyError, json.JSONDecodeError) as error:
+        raise ValueError(
+            f"could not read goal.object from {config_name}"
+        ) from error
+    if not isinstance(target_object, str) or not target_object:
+        raise ValueError(f"invalid goal.object in {config_name}: {target_object!r}")
+    return target_object
+
+
+def load_object_position(demo: h5py.Group, target_object: str):
+    """Return per-step target positions, preferring the full rigid pose."""
+    rigid_objects = demo["states"]["rigid_object"]
+    if target_object in rigid_objects:
+        return rigid_objects[target_object]["root_pose"][:, :3]
+
+    # Older recordings may contain bbox centroids but not full scene state.
+    centroids = demo["bbox"]["centroid"]
+    if target_object in centroids:
+        return centroids[target_object][:, :3]
+    raise KeyError(f"target object {target_object!r} is absent from the recording")
+
+
+def object_held_at_end(object_position, ee_position) -> tuple[bool, float, float]:
+    """Infer a final grasp from lift motion and stable object-to-EE coupling."""
+    grasp_endpoint = PHASES[1][1]
+    lift_endpoint = PHASES[2][1]
+    required_steps = lift_endpoint + 1
+    if (
+        int(object_position.shape[0]) < required_steps
+        or int(ee_position.shape[0]) < required_steps
+    ):
+        raise ValueError(
+            f"expected at least {required_steps} object and EE poses, found "
+            f"{object_position.shape[0]} and {ee_position.shape[0]}"
+        )
+
+    lift_distance = float(
+        object_position[lift_endpoint, 2]
+        - object_position[grasp_endpoint, 2]
+    )
+
+    relative_positions = [
+        [
+            float(object_position[index, axis] - ee_position[index, axis])
+            for axis in range(3)
+        ]
+        for index in range(grasp_endpoint + 1, lift_endpoint + 1)
+    ]
+    relative_motion = max(
+        euclidean_distance(relative_position, relative_positions[-1])
+        for relative_position in relative_positions
+    )
+    held = relative_motion <= MAX_OBJECT_EE_RELATIVE_MOTION
+    return held, lift_distance, relative_motion
+
+
 def empty_stats() -> Stats:
     return {
         "runs": 0,
         "reach_successes": 0,
+        "lift_successes": 0,
         **{
             f"{phase}_{metric}": []
             for phase, _, _ in PHASES
@@ -123,7 +194,7 @@ def empty_stats() -> Stats:
     }
 
 
-def analyze_run(position, orientation, goals) -> dict[str, object]:
+def analyze_run(position, orientation, object_position, goals) -> dict[str, object]:
     required_steps = PHASES[-1][1] + 1
     num_steps = int(position.shape[0])
     if num_steps < required_steps or int(orientation.shape[0]) < required_steps:
@@ -152,6 +223,19 @@ def analyze_run(position, orientation, goals) -> dict[str, object]:
         result[f"{phase}_angle_error"] = quat_angle_error_degrees_wxyz(
             orientation[endpoint, :], goal_quat
         )
+
+    object_held, object_lift_distance, object_ee_relative_motion = (
+        object_held_at_end(object_position, position)
+    )
+    result["object_held_at_end"] = object_held
+    result["object_lift_distance"] = object_lift_distance
+    result["object_ee_relative_motion"] = object_ee_relative_motion
+    print(f"Object held at end: {object_held}")
+    result["lift_success"] = (
+        object_held
+        and result["lift_position_error"] < FINAL_DISTANCE_THRESHOLD
+        and result["lift_angle_error"] < FINAL_ANGLE_THRESHOLD_DEGREES
+    )
     return result
 
 
@@ -159,6 +243,8 @@ def add_result(stats: Stats, result: dict[str, object]) -> None:
     stats["runs"] += 1
     if result["reach_success"]:
         stats["reach_successes"] += 1
+    if result["lift_success"]:
+        stats["lift_successes"] += 1
     for phase, _, _ in PHASES:
         stats[f"{phase}_position_errors"].append(
             result[f"{phase}_position_error"]
@@ -173,8 +259,12 @@ def make_row(model: str, task: str, stats: Stats) -> Row:
         "task": task,
         "runs": runs,
         "reach_successes": stats["reach_successes"],
+        "lift_successes": stats["lift_successes"],
         "angled_reach_success_rate": (
             int(stats["reach_successes"]) / runs if runs else 0.0
+        ),
+        "lift_success_rate": (
+            int(stats["lift_successes"]) / runs if runs else 0.0
         ),
     }
     for phase, _, _ in PHASES:
@@ -200,15 +290,26 @@ def summarize(
         model_stats = empty_stats()
 
         with zipfile.ZipFile(zip_path, "r") as zip_file:
+            target_objects: dict[str, str] = {}
             for item, task in iter_run_files(zip_file):
                 if tasks_filter is not None and task not in tasks_filter:
                     continue
                 goals = load_phase_goals(task, assets_root)
+                if task not in target_objects:
+                    target_objects[task] = load_target_object(zip_file, item)
+                target_object = target_objects[task]
+
                 with zip_file.open(item) as run_file:
                     with h5py.File(run_file, "r") as hdf5_file:
-                        ee_pose = hdf5_file["data"]["demo_0"]["ee_pose"]
+                        demo = hdf5_file["data"]["demo_0"]
+                        ee_pose = demo["ee_pose"]
+                        object_position = load_object_position(demo, target_object)
+                        print(run_file.name)
                         result = analyze_run(
-                            ee_pose["position"], ee_pose["orientation"], goals
+                            ee_pose["position"],
+                            ee_pose["orientation"],
+                            object_position,
+                            goals,
                         )
 
                 task_stats = by_task.setdefault(task, empty_stats())
@@ -223,7 +324,12 @@ def summarize(
                     )
                     print(
                         f"{model} | {task} | {item.filename} | "
-                        f"reach_success={result['reach_success']} | {phase_text}"
+                        f"reach_success={result['reach_success']} | "
+                        f"object_held={result['object_held_at_end']} | "
+                        f"object_lift={result['object_lift_distance']:.4f} m | "
+                        f"relative_motion="
+                        f"{result['object_ee_relative_motion']:.4f} m | "
+                        f"lift_success={result['lift_success']} | {phase_text}"
                     )
 
         for task, stats in sorted(by_task.items()):
@@ -235,18 +341,18 @@ def summarize(
 
 def print_table(rows: list[Row]) -> None:
     print(
-        f"{'Model':<22} {'Task':<38} {'Runs':>4} {'Reach SR':>9} "
+        f"{'Model':<22} {'Task':<38} {'Runs':>4} {'Reach SR':>9} {'Lift SR':>9} "
         f"{'Reach Pos':>21} {'Reach Ang':>19} "
         f"{'Grasp Pos':>21} {'Grasp Ang':>19} "
         f"{'Lift Pos':>21} {'Lift Ang':>19}"
     )
     print(
-        f"{'':<22} {'':<38} {'':>4} {'':>9} "
+        f"{'':<22} {'':<38} {'':>4} {'':>9} {'':>9} "
         + " ".join(
             f"{'mean ± std':>21} {'mean ± std (deg)':>19}" for _ in PHASES
         )
     )
-    print("-" * 205)
+    print("-" * 215)
     for row in rows:
         phase_columns = []
         for phase, _, _ in PHASES:
@@ -261,6 +367,7 @@ def print_table(rows: list[Row]) -> None:
         print(
             f"{row['model']:<22} {row['task']:<38} {row['runs']:>4} "
             f"{row['angled_reach_success_rate']:>8.2%} "
+            f"{row['lift_success_rate']:>8.2%} "
             + " ".join(
                 f"{value:>{21 if index % 2 == 0 else 19}}"
                 for index, value in enumerate(phase_columns)
@@ -317,6 +424,13 @@ def main() -> None:
         "Angled-reach success thresholds: "
         f"position error < {DISTANCE_THRESHOLD} m, "
         f"angle error < {ANGLE_THRESHOLD_DEGREES} deg"
+    )
+    print(
+        "Lift success thresholds: "
+        f"position error < {FINAL_DISTANCE_THRESHOLD} m, "
+        f"angle error < {FINAL_ANGLE_THRESHOLD_DEGREES} deg, "
+        f"object/EE relative motion <= "
+        f"{MAX_OBJECT_EE_RELATIVE_MOTION} m over the lift phase"
     )
     rows = summarize(zip_paths, args.assets_root, tasks_filter, args.verbose_runs)
     print_table(rows)

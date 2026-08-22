@@ -470,8 +470,8 @@ def main() -> None:
     #                 "ReachCeramicMugTask"
     # ]
     tasks_filter = [
-                    # "AngledReachMacaroniTask",
-                    "AngledReachBananaTask",
+                    "AngledReachMacaroniTask",
+                    # "AngledReachBananaTask",
                     "AngledReachDrillTask",
                     # "AngledReachMarkerTask",
                     "AngledReachKetchupTask",

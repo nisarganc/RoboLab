@@ -102,6 +102,19 @@ parser.add_argument("--randomize-background", "--randomize_background", action="
                          "recorded in the per-task env_cfg.json.")
 parser.add_argument("--background-seed", "--background_seed", type=int, default=None,
                     help="Seed for reproducible per-task background sampling. Used with --randomize-background.")
+parser.add_argument("--randomize-side-camera", "--randomize_side_camera", action="store_true",
+                    help="Randomize the side-camera position and orientation at every episode reset.")
+parser.add_argument("--side-camera-name", "--side_camera_name", type=str,
+                    default="over_shoulder_right_camera",
+                    help="Scene camera to perturb (default: over_shoulder_right_camera).")
+parser.add_argument("--side-camera-position-range", "--side_camera_position_range", type=float, nargs=3,
+                    metavar=("X", "Y", "Z"), default=(0.2, 0.2, 0.1),
+                    help="Maximum absolute x/y/z position deltas in metres.")
+parser.add_argument("--side-camera-angle-range", "--side_camera_angle_range", type=float, nargs=3,
+                    metavar=("ROLL", "PITCH", "YAW"), default=(0.2, 0.2, 0.2),
+                    help="Maximum absolute roll/pitch/yaw deltas in radians.")
+parser.add_argument("--run-randomization-seed", "--run_randomization_seed", type=int, default=None,
+                    help="Reseed Torch with SEED + run_index immediately before each episode reset.")
 # parse the arguments
 args_cli, _= parser.parse_known_args()
 
@@ -121,6 +134,32 @@ from robolab.core.utils.print_utils import print_experiment_summary # noqa
 from robolab.core.logging.results import check_all_episodes_complete, check_run_complete # noqa
 from robolab.core.logging.results import init_experiment, summarize_experiment_results # noqa
 import robolab.constants # noqa
+
+side_camera_events = None
+if args_cli.randomize_side_camera:
+    from isaaclab.managers import EventTermCfg as EventTerm  # noqa
+    from robolab.core.events.reset_camera import reset_camera_pose_uniform  # noqa
+
+    position_range = args_cli.side_camera_position_range
+    angle_range = args_cli.side_camera_angle_range
+    side_camera_events = {
+        "randomize_side_camera": EventTerm(
+            func=reset_camera_pose_uniform,
+            mode="reset",
+            params={
+                "camera_names": [args_cli.side_camera_name],
+                "relative_to_initial_pose": True,
+                "pose_range": {
+                    "x": (-position_range[0], position_range[0]),
+                    "y": (-position_range[1], position_range[1]),
+                    "z": (-position_range[2], position_range[2]),
+                    "roll": (-angle_range[0], angle_range[0]),
+                    "pitch": (-angle_range[1], angle_range[1]),
+                    "yaw": (-angle_range[2], angle_range[2]),
+                },
+            },
+        )
+    }
 
 # Update robolab.constants module settings from command line arguments
 robolab.constants.ENABLE_SUBTASK_PROGRESS_CHECKING = args_cli.enable_subtask
@@ -231,6 +270,7 @@ def main():
             device=args_cli.device,
             num_envs=num_envs,
             use_fabric=True,
+            events=side_camera_events,
             instruction_type=args_cli.instruction_type,
             policy=args_cli.policy)
 
@@ -260,6 +300,13 @@ def main():
                 run_name = task_env + f"_{run_idx}"
             print(f"\033[96m[RoboLab] Running {run_name}: '{env_cfg.instruction}' (run {run_idx}, {num_envs} envs)\033[0m")
 
+            run_randomization_seed = None
+            if args_cli.run_randomization_seed is not None:
+                import torch
+                run_randomization_seed = args_cli.run_randomization_seed + run_idx
+                torch.manual_seed(run_randomization_seed)
+                print(f"\033[96m[RoboLab] Run randomization seed: {run_randomization_seed}\033[0m")
+
             env_results, msgs, timing = run_episode(env=env,
                         env_cfg=env_cfg,
                         episode=run_idx,
@@ -284,6 +331,12 @@ def main():
                 episode_results=episode_results,
                 episode_results_file=episode_results_file,
                 enable_subtask_progress=robolab.constants.ENABLE_SUBTASK_PROGRESS_CHECKING,
+                extra_fields={
+                    "run_randomization_seed": run_randomization_seed,
+                    "side_camera_name": args_cli.side_camera_name,
+                    "side_camera_position_range": args_cli.side_camera_position_range,
+                    "side_camera_angle_range": args_cli.side_camera_angle_range,
+                } if args_cli.randomize_side_camera else None,
             )
 
             # Reset eval state for next run (unfreeze all envs)

@@ -78,7 +78,7 @@ apptainer overlay create --size 4096 \
   robolab-valpa-overlay.img
 
 apptainer shell --nv \
-  --overlay overlay_interactive.img \
+  --overlay overlay_reach_test.img \
   --bind "$PWD/RoboLab:/workspace/robolab" \
   --bind "$PWD/.cache/checkpoints:/workspace/robolab/checkpoints" \
   robolab-valpa.sif

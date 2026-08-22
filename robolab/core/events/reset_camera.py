@@ -84,6 +84,8 @@ def sample_camera_pose_uniform(
     camera: Camera,
     env_ids: torch.Tensor,
     pose_range: dict[str, tuple[float, float]],
+    base_positions: torch.Tensor | None = None,
+    base_orientations: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Sample a random camera pose uniformly within the given ranges.
 
@@ -107,8 +109,12 @@ def sample_camera_pose_uniform(
 
     # Get current camera poses as the base
     # Camera data provides pos_w and quat_w_ros (or quat_w depending on convention)
-    current_positions = camera.data.pos_w[env_ids].clone()
-    current_orientations = camera.data.quat_w_ros[env_ids].clone()
+    if base_positions is None:
+        base_positions = camera.data.pos_w
+    if base_orientations is None:
+        base_orientations = camera.data.quat_w_ros
+    current_positions = base_positions[env_ids].clone()
+    current_orientations = base_orientations[env_ids].clone()
 
     # Create pose ranges tensor
     range_list = [pose_range.get(key, (0.0, 0.0)) for key in ["x", "y", "z", "roll", "pitch", "yaw"]]
@@ -137,6 +143,7 @@ def reset_camera_pose_uniform(
     env_ids: torch.Tensor,
     pose_range: dict[str, tuple[float, float]],
     camera_names: list[str] | str,
+    relative_to_initial_pose: bool = False,
 ):
     """Reset camera pose to a random position and orientation uniformly within the given ranges.
 
@@ -155,8 +162,14 @@ def reset_camera_pose_uniform(
             Example: {"x": (-0.1, 0.1), "y": (-0.1, 0.1), "z": (-0.05, 0.05),
                      "roll": (-0.1, 0.1), "pitch": (-0.1, 0.1), "yaw": (-0.1, 0.1)}
         camera_names: The camera name(s) to randomize. Must match names in env.scene.sensors.
+        relative_to_initial_pose: Apply every sampled delta to the camera pose captured
+            on the first reset, preventing perturbations from accumulating across runs.
     """
     names = _parse_camera_names(camera_names)
+    initial_pose_cache = getattr(env, "_camera_pose_randomization_initial_poses", None)
+    if relative_to_initial_pose and initial_pose_cache is None:
+        initial_pose_cache = {}
+        setattr(env, "_camera_pose_randomization_initial_poses", initial_pose_cache)
 
     for camera_name in names:
         # Get camera from scene sensors
@@ -175,8 +188,18 @@ def reset_camera_pose_uniform(
             print(f"Randomizing camera pose for '{camera_name}' with ranges: {pose_range}")
 
         # Sample new poses
+        base_positions = None
+        base_orientations = None
+        if relative_to_initial_pose:
+            if camera_name not in initial_pose_cache:
+                initial_pose_cache[camera_name] = (
+                    camera.data.pos_w.clone(),
+                    camera.data.quat_w_ros.clone(),
+                )
+            base_positions, base_orientations = initial_pose_cache[camera_name]
+
         positions, orientations = sample_camera_pose_uniform(
-            env, camera, env_ids, pose_range
+            env, camera, env_ids, pose_range, base_positions, base_orientations
         )
 
         # Set the camera poses

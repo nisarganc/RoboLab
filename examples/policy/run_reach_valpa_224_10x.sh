@@ -17,6 +17,7 @@ NUM_RUNS_PER_TASK="${NUM_RUNS_PER_TASK:-10}"
 
 MODEL_CONFIGS=(
     droid-224px-8f-dual.yaml
+    # droid-224px-8f-dual-nocrossattn.yaml
 )
 
 TASKS=(

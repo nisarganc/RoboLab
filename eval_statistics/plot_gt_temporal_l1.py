@@ -56,8 +56,10 @@ CHECKPOINT_ROOT = REPO_ROOT.parent / ".cache" / "checkpoints"
 CONFIG_ROOT = VALPA_ROOT / "configs" / "inference" / "valpa-angledpickup"
 
 # Edit these defaults or use the command-line options below.
-TASK = "AngledPickupKetchupTask"
-RUNS_FILTER: list[int] = [0]
+TASK = "AngledPickupLizardFigurineTask"
+# One run may be written as ``3``; multiple runs as ``[0, 3, 7]``.
+# Use ``None`` to select all matching runs.
+RUNS_FILTER: int | list[int] | None = [3]
 NUM_STEPS = 60
 REPEATS = 1
 
@@ -108,6 +110,22 @@ MODEL_SPECS = {
 
 def normalize_task_name(task: str) -> str:
     return task[:-4] if task.endswith("Task") else task
+
+
+def normalize_runs_filter(
+    runs: int | list[int] | tuple[int, ...] | None,
+) -> set[int] | None:
+    """Normalize a convenient single- or multi-run selection."""
+    if runs is None:
+        return None
+    if isinstance(runs, int):
+        runs = [runs]
+    normalized = set(runs)
+    if not normalized:
+        raise ValueError("run selection cannot be empty; use None for all runs")
+    if any(run < 0 for run in normalized):
+        raise ValueError("run numbers must be nonnegative")
+    return normalized
 
 
 @dataclass
@@ -654,6 +672,14 @@ def parse_args() -> argparse.Namespace:
         help="Run to include; repeatable. Overrides RUNS_FILTER.",
     )
     parser.add_argument(
+        "--runs-filter",
+        nargs="+",
+        type=int,
+        default=None,
+        metavar="RUN",
+        help="Space-separated runs to include, e.g. --runs-filter 0 3 7.",
+    )
+    parser.add_argument(
         "--all-runs",
         action="store_true",
         help="Use every matching task video in the source archive.",
@@ -700,15 +726,33 @@ def main() -> None:
     if not source_zip.is_file():
         raise SystemExit(f"Source archive not found: {source_zip}")
 
-    selected_runs = None if args.all_runs else (
-        args.run if args.run is not None else RUNS_FILTER
+    if args.all_runs and (args.run is not None or args.runs_filter is not None):
+        raise SystemExit("--all-runs cannot be combined with --run/--runs-filter")
+    if args.run is not None and args.runs_filter is not None:
+        raise SystemExit("use either --run or --runs-filter, not both")
+    selected_runs = (
+        None
+        if args.all_runs
+        else (
+            args.runs_filter
+            if args.runs_filter is not None
+            else (args.run if args.run is not None else RUNS_FILTER)
+        )
     )
-    runs_filter = set(selected_runs) if selected_runs is not None else None
+    try:
+        runs_filter = normalize_runs_filter(selected_runs)
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
     video_members = find_video_members(source_zip, args.task, runs_filter)
     if not video_members:
         raise SystemExit("No sensor videos matched the task and run selection")
     print(f"Source archive: {source_zip}")
     print(f"Task: {normalize_task_name(args.task)}")
+    print(
+        "Selected runs: all"
+        if runs_filter is None
+        else f"Selected runs: {sorted(runs_filter)}"
+    )
     print(f"Independent model passes per video: {args.repeats}")
     with zipfile.ZipFile(source_zip, "r") as archive:
         for run, member in video_members.items():

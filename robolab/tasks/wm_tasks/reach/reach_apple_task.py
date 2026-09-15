@@ -46,7 +46,7 @@ class ReachAppleTask(Task):
         "z_offset": 0.15,
         "drive_steps": 50,
         "settle_steps": 4,
-        "external_camera": "over_shoulder_right_camera",
+        "external_camera": "over_shoulder_left_camera",
         "wrist_camera": "wrist_cam",
     }
     subtasks = [

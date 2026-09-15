@@ -99,7 +99,7 @@ class VALPADroidEEClient(InferenceClient):
     def _extract_observation(self, obs_dict: dict, *, env_id: int) -> dict:
         from scipy.spatial.transform import Rotation
 
-        external_image = obs_dict["image_obs"]["over_shoulder_right_camera"][env_id].clone().detach().cpu()
+        external_image = obs_dict["image_obs"]["over_shoulder_left_camera"][env_id].clone().detach().cpu()
         wrist_image = obs_dict["image_obs"]["wrist_cam"][env_id].clone().detach().cpu()
 
         robot_state = obs_dict["proprio_obs"]

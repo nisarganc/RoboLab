@@ -6,15 +6,16 @@ video frame ``t - 1`` to frame ``t``, all patch and embedding dimensions are
 flattened and reduced with the scalar L1 function from ``mpc_utils_dual.py``.
 
 Sensor MP4s contain the side view in the left half and wrist view in the right
-half.  Side, wrist, and their summed dual-view L1 are plotted separately.  The
-default selection is AngledPickupKetchup run 0, independently passed through
-each encoder ten times; curves show the across-repeat mean and one population
-standard deviation.
+half.  The comparison figure places those views in rows. Each model column
+overlays its encoder and action-conditioned predictor curves for direct
+comparison.  The default selection is AngledPickupLizardFigurine run 7,
+passed once through each encoder; curves show the across-repeat mean and
+one population standard deviation.
 
-The second row feeds the *same* trajectory, poses, and planned action sequences
-from the dual-DINO metrics file through the dual-DINO, dual-V-JEPA, and
-independent-DINO predictors. It plots the scalar L1 between each predictor's
-next-patch output and the encoded observation patches supplied as its input.
+The predictor columns feed the *same* trajectory, poses, and planned action
+sequences from the dual-DINO metrics file through the dual-DINO and dual-V-JEPA
+predictors. They plot the scalar L1 between each predictor's next-patch output
+and the encoded observation patches supplied as its input.
 Because episode videos are written after ``env.step``, video frame ``t - 1``
 and HDF5 pose ``t - 1`` are the inputs associated with planned action ``t``;
 planned action 0 has no recorded pre-action frame and is intentionally skipped.
@@ -59,19 +60,19 @@ CONFIG_ROOT = VALPA_ROOT / "configs" / "inference" / "valpa-angledpickup"
 TASK = "AngledPickupLizardFigurineTask"
 # One run may be written as ``3``; multiple runs as ``[0, 3, 7]``.
 # Use ``None`` to select all matching runs.
-RUNS_FILTER: int | list[int] | None = [3]
-NUM_STEPS = 60
-REPEATS = 1
+RUNS_FILTER: int | list[int] | None = [4]
+NUM_STEPS = 30
+REPEATS = 30
 
 ENCODER_MODELS = ("dual_dinov3", "dual_vjepa")
-PREDICTOR_MODELS = ("dual_dinov3", "dual_vjepa", "ind_dinov3")
+PREDICTOR_MODELS = ("dual_dinov3", "dual_vjepa")
 ENCODER_LABELS = {
     "dual_dinov3": "DINOv3",
-    "dual_vjepa": "VJEPA2",
+    "dual_vjepa": "V-JEPA 2",
 }
 PREDICTOR_LABELS = {
-    "dual_dinov3": "DINOv3 Predictor",
-    "dual_vjepa": "VJEPA2 Predictor",
+    "dual_dinov3": "DINOv3 Predictors",
+    "dual_vjepa": "V-JEPA 2 Predictors",
     "ind_dinov3": "Independent DINOv Predictor",
 }
 VIEWS = ("side", "wrist")
@@ -547,77 +548,101 @@ def plot_comparison(
     predictor_models: tuple[str, ...],
     output_path: Path,
 ) -> None:
+    columns = []
+    if predictor_models:
+        for model_name in predictor_models:
+            series = []
+            if model_name in encoder_models:
+                series.append(("encoder", model_name))
+            series.append(("predictor", model_name))
+            columns.append(series)
+
+        unmatched_encoders = tuple(
+            model_name
+            for model_name in encoder_models
+            if model_name not in predictor_models
+        )
+        if unmatched_encoders:
+            columns.insert(
+                0,
+                [("encoder", model_name) for model_name in unmatched_encoders],
+            )
+    elif encoder_models:
+        columns.append(
+            [("encoder", model_name) for model_name in encoder_models]
+        )
+    if not columns:
+        raise ValueError("at least one encoder or predictor model is required")
+
     figure, axes = plt.subplots(
-        1,
-        len(LOSS_SERIES),
-        figsize=(18, 5.8),
+        len(VIEWS),
+        len(columns),
+        figsize=(7.5 * len(columns), 11.0),
         sharex=True,
+        squeeze=False,
     )
     encoder_colors = {
         "dual_dinov3": "tab:blue",
         "dual_vjepa": "tab:red",
     }
     predictor_colors = {
-        "dual_dinov3": "tab:orange",
-        "dual_vjepa": "tab:green",
-        "ind_dinov3": "tab:green",
+        "dual_dinov3": "#56B4E9",
+        "dual_vjepa": "#E69F00",
+        "ind_dinov3": "#56B4E9",
     }
-    view_titles = {
-        "side": "Side view",
-        "wrist": "Wrist view",
-        "combined": "Dual view",
-    }
-    for axis, loss_name in zip(axes, LOSS_SERIES):
-        for model_name in encoder_models:
-            runs = temporal_results[model_name]
-            means, standard_deviations, _ = aggregate_runs(runs, loss_name)
-            steps = torch.arange(1, means.numel() + 1).numpy()
-            mean_values = means.numpy()
-            std_values = standard_deviations.numpy()
-            axis.plot(
-                steps,
-                mean_values,
-                linewidth=2,
-                color=encoder_colors[model_name],
-                label=ENCODER_LABELS[model_name],
-            )
-            axis.fill_between(
-                steps,
-                mean_values - std_values,
-                mean_values + std_values,
-                color=encoder_colors[model_name],
-                alpha=0.18,
-            )
-        for model_name in predictor_models:
-            runs = predictor_results[model_name]
-            means, standard_deviations, _ = aggregate_runs(runs, loss_name)
-            steps = torch.arange(1, means.numel() + 1).numpy()
-            mean_values = means.numpy()
-            std_values = standard_deviations.numpy()
-            axis.plot(
-                steps,
-                mean_values,
-                linewidth=1.8,
-                linestyle="--",
-                color=predictor_colors[model_name],
-                label=PREDICTOR_LABELS[model_name],
-            )
-            axis.fill_between(
-                steps,
-                mean_values - std_values,
-                mean_values + std_values,
-                color=predictor_colors[model_name],
-                alpha=0.1,
-            )
-        axis.set_title(view_titles[loss_name])
-        axis.set_xlabel("Episode transition step")
-        axis.set_ylabel("L1 norm")
-        axis.grid(alpha=0.25)
-        axis.legend()
+    for row, loss_name in enumerate(VIEWS):
+        for column, series in enumerate(columns):
+            axis = axes[row, column]
+
+            for result_kind, model_name in series:
+                if result_kind == "encoder":
+                    runs = temporal_results[model_name]
+                    color = encoder_colors[model_name]
+                    linewidth = 4.5
+                    linestyle = "-"
+                    fill_alpha = 0.18
+                else:
+                    runs = predictor_results[model_name]
+                    color = predictor_colors[model_name]
+                    linewidth = 4.5
+                    linestyle = "--"
+                    fill_alpha = 0.1
+
+                means, standard_deviations, _ = aggregate_runs(runs, loss_name)
+                steps = torch.arange(1, means.numel() + 1).numpy()
+                mean_values = means.numpy()
+                std_values = standard_deviations.numpy()
+                axis.plot(
+                    steps,
+                    mean_values,
+                    linewidth=linewidth,
+                    linestyle=linestyle,
+                    color=color,
+                )
+                axis.fill_between(
+                    steps,
+                    mean_values - std_values,
+                    mean_values + std_values,
+                    color=color,
+                    alpha=fill_alpha,
+                )
+
+            axis.tick_params(axis="both", labelsize=16, width=2.0, length=7)
+            for tick_label in (*axis.get_xticklabels(), *axis.get_yticklabels()):
+                tick_label.set_fontweight("bold")
+            for offset_text in (
+                axis.xaxis.get_offset_text(),
+                axis.yaxis.get_offset_text(),
+            ):
+                offset_text.set_fontsize(16)
+                offset_text.set_fontweight("bold")
+            for spine in axis.spines.values():
+                spine.set_linewidth(2.0)
+            axis.grid(alpha=0.3, linewidth=1.2)
 
     figure.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    figure.savefig(output_path, dpi=180)
+    figure.savefig(output_path, dpi=400, bbox_inches="tight")
     plt.close(figure)
 
 

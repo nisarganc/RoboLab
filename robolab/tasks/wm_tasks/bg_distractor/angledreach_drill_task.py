@@ -51,7 +51,7 @@ class AngledReachDrillTask(Task):
     goal = {
         "mode": "angled_reach",
         "object": "cordless_drill",
-        "external_camera": "over_shoulder_right_camera",
+        "external_camera": "over_shoulder_left_camera",
         "wrist_camera": "wrist_cam",
     }
     subtasks = [

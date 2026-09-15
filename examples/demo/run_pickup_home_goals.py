@@ -217,7 +217,7 @@ def _settle(env, obs, *, gripper_action: float):
 
 def _save_goal(env, env_cfg, obs, status_payload: dict, suffix: int, label: str):
     paths = goal_image_paths(env_cfg)
-    external_key = env_cfg.goal.get("external_camera", "over_shoulder_right_camera")
+    external_key = env_cfg.goal.get("external_camera", "over_shoulder_left_camera")
     wrist_key = env_cfg.goal.get("wrist_camera", "wrist_cam")
 
     external_path = paths["external"].with_name(f"{paths['external'].stem}_{suffix}{paths['external'].suffix}")
@@ -288,8 +288,8 @@ def main():
             gripper_action=0.0,
             label="goal 1 pickup pose",
         )
-        # obs = _save_goal(env, env_cfg, obs, status_payload, 1, "goal 1 home")
-        # exit()
+        obs = _save_goal(env, env_cfg, obs, status_payload, 1, "goal 1 home")
+        exit()
 
         obs = _close_gripper(env, obs)
         obs = _settle(env, obs, gripper_action=1.0)

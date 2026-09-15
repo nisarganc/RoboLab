@@ -55,7 +55,7 @@ class AngledReachCartoon2Task(Task):
     goal = {
         "mode": "angled_reach",
         "object": "orange_juice_carton",
-        "external_camera": "over_shoulder_right_camera",
+        "external_camera": "over_shoulder_left_camera",
         "wrist_camera": "wrist_cam",
     }
     subtasks = [

@@ -50,7 +50,7 @@ def auto_register_droid_ee_envs(task_dirs=DEFAULT_TASK_SUBFOLDERS, lighting_inte
 
     from robolab.core.environments.factory import auto_discover_and_create_cfgs, create_env_cfg
     from robolab.core.observations.observation_utils import generate_image_obs_from_cameras, generate_obs_cfg
-    from robolab.registrations.droid_jointpos.camera_presets import WRIST_RIGHT
+    from robolab.registrations.droid_jointpos.camera_presets import WRIST_LEFT
     from robolab.robots.droid import (
         DroidCfg,
         DroidIKActionCfg,
@@ -63,7 +63,7 @@ def auto_register_droid_ee_envs(task_dirs=DEFAULT_TASK_SUBFOLDERS, lighting_inte
     from robolab.variations.lighting import SphereLightCfg
 
     if cameras is None:
-        cameras = WRIST_RIGHT
+        cameras = WRIST_LEFT
     ImageObsCfg = generate_image_obs_from_cameras(cameras)
     # ViewportCameraCfg = generate_image_obs_from_cameras([EgocentricMirroredCameraCfg])
 

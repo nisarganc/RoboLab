@@ -47,7 +47,7 @@ class AngledReachMacaroniTask(Task):
     goal = {
         "mode": "angled_reach",
         "object": "macaroni_and_cheese",
-        "external_camera": "over_shoulder_right_camera",
+        "external_camera": "over_shoulder_left_camera",
         "wrist_camera": "wrist_cam",
     }
     subtasks = [

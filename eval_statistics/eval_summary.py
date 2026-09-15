@@ -1,9 +1,11 @@
 """Summarize pickup position and angle error by model and task.
 
 For each run, this script scans the trajectory to determine whether the success
-criteria were ever satisfied. Position and angle errors are always computed at
-the final recorded timestep, so the reported means do not depend on which
-timestep first crossed the success threshold.
+criteria were ever satisfied. Planning steps use the first timestep that meets
+the success criteria, or 100 for a failed run.
+Position and angle errors are always computed at the final recorded timestep,
+so the reported means do not depend on which timestep first crossed the success
+threshold.
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ DEFAULT_ZIP_GLOB = "/anvme/workspace/v106be10-valpa-robolab/.cache/output_angled
 
 DISTANCE_THRESHOLD = 0.05
 ANGLE_THRESHOLD_DEGREES = 12.0
+MAX_PLANNING_STEPS = 100
 
 TASK_NAME_MAP = {
     "ReachAppleTask": "Apple",
@@ -112,6 +115,7 @@ def run_result(position, orientation, goal_pos, goal_quat) -> dict[str, float | 
 
     selected_index = num_steps - 1
     successful = False
+    planning_step = MAX_PLANNING_STEPS
 
     for index in range(num_steps):
         pos_err = euclidean_distance(position[index, :], goal_pos)
@@ -119,7 +123,7 @@ def run_result(position, orientation, goal_pos, goal_quat) -> dict[str, float | 
 
         if pos_err < DISTANCE_THRESHOLD and ang_err < ANGLE_THRESHOLD_DEGREES:
             successful = True
-            # selected_index = index
+            planning_step = index
             break
 
     # Always report the last recorded pose. The threshold determines success,
@@ -129,6 +133,7 @@ def run_result(position, orientation, goal_pos, goal_quat) -> dict[str, float | 
 
     return {
         "successful": successful,
+        "planning_step": planning_step,
         "selected_index": selected_index,
         "position_error": selected_pos_err,
         "angle_error": selected_ang_err,
@@ -140,6 +145,9 @@ def empty_task_stats() -> dict[str, object]:
         "total_runs": 0,
         "successful_runs": 0,
         "success_rate": 0.0,
+        "planning_steps": [],
+        "planning_steps_mean": 0.0,
+        "planning_steps_std": 0.0,
         "selected_indices": [],
         "selected_index_mean": 0.0,
         "selected_index_std": 0.0,
@@ -156,6 +164,8 @@ def update_summary_stats(stats: dict[str, object]) -> None:
     stats["success_rate"] = (
         stats["successful_runs"] / stats["total_runs"] if stats["total_runs"] else 0.0
     )
+    stats["planning_steps_mean"] = mean(stats["planning_steps"])
+    stats["planning_steps_std"] = sample_std(stats["planning_steps"])
     stats["selected_index_mean"] = mean(stats["selected_indices"])
     stats["selected_index_std"] = sample_std(stats["selected_indices"])
     stats["position_error_mean"] = mean(stats["position_errors"])
@@ -218,6 +228,7 @@ def summarize(
 
                 stats = tasks_statistics[task]
                 stats["total_runs"] += 1
+                stats["planning_steps"].append(result["planning_step"])
                 stats["selected_indices"].append(result["selected_index"])
                 stats["position_errors"].append(result["position_error"])
                 stats["angle_errors"].append(result["angle_error"])
@@ -225,6 +236,7 @@ def summarize(
                     stats["successful_runs"] += 1
 
                 model_statistics["total_runs"] += 1
+                model_statistics["planning_steps"].append(result["planning_step"])
                 model_statistics["selected_indices"].append(result["selected_index"])
                 model_statistics["position_errors"].append(result["position_error"])
                 model_statistics["angle_errors"].append(result["angle_error"])
@@ -235,6 +247,7 @@ def summarize(
                     status = "success" if result["successful"] else "failed"
                     print(
                         f"{model_variant} | {task} | {item.filename} | {status} | "
+                        f"planning_step={result['planning_step']} | "
                         f"idx={result['selected_index']} | "
                         f"pos_err={result['position_error']:.6f} | "
                         f"ang_err={result['angle_error']:.3f} deg"
@@ -249,6 +262,8 @@ def summarize(
                     "runs": stats["total_runs"],
                     "successes": stats["successful_runs"],
                     "success_rate": stats["success_rate"],
+                    "planning_steps_mean": stats["planning_steps_mean"],
+                    "planning_steps_std": stats["planning_steps_std"],
                     "selected_index_mean": stats["selected_index_mean"],
                     "selected_index_std": stats["selected_index_std"],
                     "position_error_mean": stats["position_error_mean"],
@@ -267,6 +282,8 @@ def summarize(
                     "runs": model_statistics["total_runs"],
                     "successes": model_statistics["successful_runs"],
                     "success_rate": model_statistics["success_rate"],
+                    "planning_steps_mean": model_statistics["planning_steps_mean"],
+                    "planning_steps_std": model_statistics["planning_steps_std"],
                     "selected_index_mean": model_statistics["selected_index_mean"],
                     "selected_index_std": model_statistics["selected_index_std"],
                     "position_error_mean": model_statistics["position_error_mean"],
@@ -282,13 +299,15 @@ def summarize(
 def print_table(rows: list[dict[str, object]]) -> None:
     print(
         f"{'Model':<30} {'Task':<32} {'Runs':>4} {'Succ':>4} {'SR':>6} "
+        f"{'Plan Mean':>10} {'Plan Std':>10} "
         f"{'Pos Mean':>10} {'Pos Std':>10} {'Ang Mean':>10} {'Ang Std':>10}"
     )
-    print("-" * 130)
+    print("-" * 152)
     for row in rows:
         print(
             f"{row['model']:<30} {row['task']:<32} "
             f"{row['runs']:>4} {row['successes']:>4} {row['success_rate']:>6.2f} "
+            f"{row['planning_steps_mean']:>10.2f} {row['planning_steps_std']:>10.2f} "
             f"{row['position_error_mean']:>10.6f} {row['position_error_std']:>10.6f} "
             f"{row['angle_error_mean_deg']:>10.3f} {row['angle_error_std_deg']:>10.3f}"
         )

@@ -87,7 +87,7 @@ cd /workspace/robolab/
 python-rtx-compat examples/demo/run_env_keys.py --headless --task AngledPickupLizardFigurineTask
 
 python-rtx-compat examples/demo/run_pickup_home_goals.py \
-  --task AngledPickupLizardFigurineTask \
+  --task AngledReachDrillTask \
   --headless
 
 python-rtx-compat robolab/tasks/wm_tasks/goal_images.py --task ReachPitcherTask
@@ -113,3 +113,4 @@ python-rtx-compat eval_statistics/plot_ind_vs_dual_dino_relative_loss.py \
   --task AngledPickupKetchupTask \
   --run 0 \
   --num-steps 130
+

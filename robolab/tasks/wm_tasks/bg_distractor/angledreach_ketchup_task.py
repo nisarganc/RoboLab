@@ -54,7 +54,7 @@ class AngledReachKetchupTask(Task):
     goal = {
         "mode": "angled_reach",
         "object": "ketchup_bottle",
-        "external_camera": "over_shoulder_right_camera",
+        "external_camera": "over_shoulder_left_camera",
         "wrist_camera": "wrist_cam",
     }
     subtasks = [

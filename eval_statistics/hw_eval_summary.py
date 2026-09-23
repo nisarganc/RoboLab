@@ -15,7 +15,7 @@ from pathlib import Path
 import zipfile
 
 
-DEFAULT_ZIP = Path("/anvme/workspace/v106be10-valpa-robolab/.cache/hw_putput.zip")
+DEFAULT_ZIP = Path("/anvme/workspace/v106be10-valpa-robolab/.cache/output_hw/hw_3tasks.zip")
 GOAL_FILENAME = "goal_pose-1.yaml"
 STATE_RE = re.compile(r"^state:\s*(\[[^\n]+\])", re.MULTILINE)
 

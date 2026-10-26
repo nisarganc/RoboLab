@@ -56,14 +56,14 @@ with socket.create_connection((host, port), timeout=30) as sock:
     while len(size_data) < header.size:
         chunk = sock.recv(header.size - len(size_data))
         if not chunk:
-            raise ConnectionError("VALPA policy socket closed while reading metadata header")
+            raise ConnectionError("DUET-DINO policy socket closed while reading metadata header")
         size_data += chunk
     size = header.unpack(size_data)[0]
     data = b""
     while len(data) < size:
         chunk = sock.recv(size - len(data))
         if not chunk:
-            raise ConnectionError("VALPA policy socket closed while reading metadata payload")
+            raise ConnectionError("DUET-DINO policy socket closed while reading metadata payload")
         data += chunk
 
 response = pickle.loads(data)
@@ -83,7 +83,7 @@ fi
 
 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
     "$ISAAC_PYTHON" examples/policy/run_reach_eval.py \
-    --policy valpa \
+    --policy duet-dino \
     --num-runs "$NUM_RUNS_PER_TASK" \
     --num-envs 1 \
     --device "$DEVICE" \

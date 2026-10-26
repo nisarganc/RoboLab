@@ -2,7 +2,7 @@ set -euo pipefail
 
 export ISAAC_PYTHON="${ISAAC_PYTHON:-python-rtx-compat}"
 REMOTE_HOST="${REMOTE_HOST:-localhost}"
-REMOTE_PORT="${REMOTE_PORT:-8100}"
+REMOTE_PORT="${REMOTE_PORT:-8000}"
 SERVER_HOST="${SERVER_HOST:-0.0.0.0}"
 SERVER_START_TIMEOUT="${SERVER_START_TIMEOUT:-600}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-/anvme/workspace/v106be10-valpa-robolab/RoboLab/output}"
@@ -13,19 +13,20 @@ DEVICE="${DEVICE:-cuda:0}"
 SERVER_LOG_DIR="${SERVER_LOG_DIR:-$OUTPUT_ROOT/${REMOTE_PORT}}"
 ARCHIVE_AFTER_MODEL="${ARCHIVE_AFTER_MODEL:-1}"
 DELETE_UNZIPPED_AFTER_ARCHIVE="${DELETE_UNZIPPED_AFTER_ARCHIVE:-1}"
-NUM_RUNS_PER_TASK="${NUM_RUNS_PER_TASK:-1}"
+NUM_RUNS_PER_TASK="${NUM_RUNS_PER_TASK:-10}"
 
 MODEL_CONFIGS=(
-    droid-224px-8f-dual-test.yaml
+    droid-224px-8f-dual.yaml
+    # droid-224px-8f-dual-nocrossattn.yaml
 )
 
 TASKS=(
-    ReachPitcherTask
-    ReachSpoonBigTask
     ReachBananaTask
     ReachCoffeeCanTask
     ReachCoffeePotTask
     ReachOrangeJuiceCartonTask
+    ReachPitcherTask
+    ReachSpoonBigTask
     ReachYogurtCupTask
     ReachAppleTask
     ReachBagelTask
@@ -143,14 +144,14 @@ with socket.create_connection((host, port), timeout=30) as sock:
     while len(size_data) < header.size:
         chunk = sock.recv(header.size - len(size_data))
         if not chunk:
-            raise ConnectionError("VALPA policy socket closed while reading metadata header")
+            raise ConnectionError("DUET-DINO policy socket closed while reading metadata header")
         size_data += chunk
     size = header.unpack(size_data)[0]
     data = b""
     while len(data) < size:
         chunk = sock.recv(size - len(data))
         if not chunk:
-            raise ConnectionError("VALPA policy socket closed while reading metadata payload")
+            raise ConnectionError("DUET-DINO policy socket closed while reading metadata payload")
         data += chunk
 
 response = pickle.loads(data)
@@ -247,8 +248,8 @@ trap 'cleanup_server; exit 143' TERM
 
 if port_open; then
     echo "Port $REMOTE_HOST:$REMOTE_PORT is already open."
-    echo "Stop the existing VALPA server before running the model sweep, so each cfg is evaluated against the intended hosted model."
-    pkill -f "valpa/inference/serve_policy.py.*--port $REMOTE_PORT" || true
+    echo "Stop the existing DUET-DINO server before running the model sweep, so each cfg is evaluated against the intended hosted model."
+    pkill -f "duet-dino-dev/inference/serve_policy.py.*--port $REMOTE_PORT" || true
 fi
 
 mkdir -p "$SERVER_LOG_DIR"
@@ -257,7 +258,7 @@ echo "=== GPU visibility: CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset}, D
 FILTERED_MODEL_CONFIGS=()
 
 for cfg_file in "${MODEL_CONFIGS[@]}"; do
-    if ! model_name="$(cfg_model_name "/workspace/robolab/valpa/configs/inference/valpa-reach/$cfg_file")"; then
+    if ! model_name="$(cfg_model_name "/workspace/robolab/duet-dino-dev/configs/inference/reach/$cfg_file")"; then
         echo "Could not find modelname in config file: $cfg_file"
         exit 1
     fi
@@ -286,7 +287,7 @@ if ((${#MODEL_CONFIGS[@]} == 0)); then
 fi
 
 for cfg_file in "${MODEL_CONFIGS[@]}"; do
-    cfg_path="/workspace/robolab/valpa/configs/inference/valpa-reach/$cfg_file"
+    cfg_path="/workspace/robolab/duet-dino-dev/configs/inference/reach/$cfg_file"
 
     if ! cfg_model_name_value="$(cfg_model_name "$cfg_path")"; then
         echo "Could not find modelname in config file: $cfg_file"
@@ -304,23 +305,22 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
     cfg_name="${cfg_file%.yaml}"
     server_log="$SERVER_LOG_DIR/${cfg_name}_serve_policy.log"
 
-    echo
-    echo "=== Starting VALPA server: $cfg_file ==="
+    echo "=== Starting DUET-DINO server: $cfg_file ==="
     
     # Ensure any stray serve_policy processes are killed
-    pkill -f "valpa/inference/serve_policy.py.*--port $REMOTE_PORT" || true
+    pkill -f "duet-dino-dev/inference/serve_policy.py.*--port $REMOTE_PORT" || true
     sleep 2
     
     PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-        "$ISAAC_PYTHON" valpa/inference/serve_policy.py \
-        --cfg-file "valpa-reach/$cfg_file" \
+        "$ISAAC_PYTHON" duet-dino-dev/inference/serve_policy.py \
+        --cfg-file "reach/$cfg_file" \
         --host "$SERVER_HOST" \
         --port "$REMOTE_PORT" \
         >"$server_log" 2>&1 &
     SERVER_PID="$!"
 
     if ! wait_for_server; then
-        echo "VALPA server failed to become ready for $cfg_file."
+        echo "DUET-DINO server failed to become ready for $cfg_file."
         echo "Last server log lines from $server_log:"
         tail -n 80 "$server_log" || true
         exit 1

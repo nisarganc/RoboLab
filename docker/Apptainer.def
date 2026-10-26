@@ -1,6 +1,5 @@
-# RoboLab + VALPA on Isaac Lab 2.2.0 / Isaac Sim 5.0, with the experimental
+# RoboLab + DUET-DINO on Isaac Lab 2.2.0 / Isaac Sim 5.0, with the experimental
 # Vulkan Profiles workaround for the host NVIDIA 610 driver.
-# Build from /anvme/workspace/v106be10-valpa-robolab.
 
 Bootstrap: docker
 From: nvcr.io/nvidia/isaac-lab:{{ ISAACLAB_TAG }}
@@ -27,7 +26,7 @@ From: nvcr.io/nvidia/isaac-lab:{{ ISAACLAB_TAG }}
     RoboLab/robolab_policy_client /workspace/robolab/robolab_policy_client
     RoboLab/scripts /workspace/robolab/scripts
     RoboLab/skills /workspace/robolab/skills
-    RoboLab/valpa /workspace/robolab/valpa
+    RoboLab/duet-dino-dev /workspace/robolab/duet-dino-dev
     RoboLab/docker/vulkan-rtx-compat /workspace/robolab/docker/vulkan-rtx-compat
 
 %post
@@ -59,11 +58,11 @@ From: nvcr.io/nvidia/isaac-lab:{{ ISAACLAB_TAG }}
     GIT_LFS_SKIP_SMUDGE=1 /workspace/isaaclab/_isaac_sim/python.sh \
         -m pip install --no-cache-dir -e .
 
-    # Match the Dockerfile VALPA installation exactly. The Isaac base image
-    # and RoboLab provide the common stack; avoid resolving VALPA broad deps.
+    # Match the Dockerfile DUET-DINO installation exactly. The Isaac base image
+    # and RoboLab provide the common stack; avoid resolving DUET-DINO broad deps.
     /workspace/isaaclab/_isaac_sim/python.sh -m pip install \
         --no-cache-dir --no-deps timm einops
-    cd /workspace/robolab/valpa
+    cd /workspace/robolab/duet-dino-dev
     GIT_LFS_SKIP_SMUDGE=1 /workspace/isaaclab/_isaac_sim/python.sh \
         -m pip install --no-cache-dir --no-deps -e .
     cd /workspace/robolab
@@ -110,4 +109,4 @@ From: nvcr.io/nvidia/isaac-lab:{{ ISAACLAB_TAG }}
 
 %labels
     org.opencontainers.image.title RoboLab
-    org.opencontainers.image.description "RoboLab + VALPA on Isaac Lab 2.2.0 with Vulkan RTX driver compatibility profile"
+    org.opencontainers.image.description "RoboLab + DUET-DINO on Isaac Lab 2.2.0 with Vulkan RTX driver compatibility profile"

@@ -2,7 +2,7 @@
 # Take an episode from one of the episodes in ../../.cache/output_reach
 
 #!/usr/bin/env python3
-"""Inspect a saved VALPA run_metrics.pt and plot predicted-patch PCA."""
+"""Inspect a saved DUET-DINO run_metrics.pt and plot predicted-patch PCA."""
 
 from __future__ import annotations
 

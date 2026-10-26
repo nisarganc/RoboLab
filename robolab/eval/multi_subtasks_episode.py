@@ -68,7 +68,7 @@ def set_client_goal_images_for_stage(
             run_idx=run_idx,
         )
         # Keep the new goal from inheriting an old open-loop chunk. Avoid the
-        # VALPA client's server-side reset here; set_goal_images already updates
+        # DUET-DINO client's server-side reset here; set_goal_images already updates
         # server goal state.
         InferenceClient.reset(client, env_id=int(env_id))
 

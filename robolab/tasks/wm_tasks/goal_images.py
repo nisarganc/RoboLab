@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: CC-BY-NC-4.0
 
-"""Goal image cache/generation helpers for VALPA world-model tasks.
+"""Goal image cache/generation helpers for DUET-DINO world-model tasks.
 
 This module keeps task goal-image capture out of the policy episode runner.
 It can also be run directly inside an Isaac Lab Python session to precompute
@@ -71,7 +71,8 @@ def _angled_status_path(task_name: str) -> Path:
     raise FileNotFoundError(f"No angled-reach status pose found for {task_name} in {task_root}.")
 
 
-def drive_to_valpa_goal(env, env_cfg, obs: dict | None = None) -> dict:
+
+def drive_to_duet_dino_goal(env, env_cfg, obs: dict | None = None) -> dict:
     """Drive the robot to the task's configured goal pose and return latest obs."""
     from robolab.core.world.world_state import get_world
 
@@ -181,7 +182,7 @@ def generate_goal_images(env, env_cfg, obs: dict | None = None, *, overwrite: bo
 
     task_name = getattr(env_cfg, "_task_name")
     print(f"\033[96m[RoboLab] Generating goal images for {task_name}\033[0m")
-    goal_obs, reached, last_dist, last_gripper_pose = drive_to_valpa_goal(env, env_cfg, obs=obs)
+    goal_obs, reached, last_dist, last_gripper_pose = drive_to_duet_dino_goal(env, env_cfg, obs=obs)
     if not reached:
         raise RuntimeError(
             f"Robot did not reach the configured goal pose for {task_name}; "
@@ -243,7 +244,7 @@ def main() -> int:
             num_envs=args_cli.num_envs,
             use_fabric=True,
             instruction_type=args_cli.instruction_type,
-            policy="valpa",
+            policy="duet-dino",
         )
         generate_goal_images(env, env_cfg)
         env.close()

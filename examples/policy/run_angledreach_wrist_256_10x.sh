@@ -140,14 +140,14 @@ with socket.create_connection((host, port), timeout=30) as sock:
     while len(size_data) < header.size:
         chunk = sock.recv(header.size - len(size_data))
         if not chunk:
-            raise ConnectionError("VALPA policy socket closed while reading metadata header")
+            raise ConnectionError("DUET-DINO policy socket closed while reading metadata header")
         size_data += chunk
     size = header.unpack(size_data)[0]
     data = b""
     while len(data) < size:
         chunk = sock.recv(size - len(data))
         if not chunk:
-            raise ConnectionError("VALPA policy socket closed while reading metadata payload")
+            raise ConnectionError("DUET-DINO policy socket closed while reading metadata payload")
         data += chunk
 
 response = pickle.loads(data)
@@ -190,8 +190,8 @@ trap 'cleanup_server; exit 143' TERM
 
 if port_open; then
     echo "Port $REMOTE_HOST:$REMOTE_PORT is already open."
-    echo "Stop the existing VALPA server before running the model sweep, so each cfg is evaluated against the intended hosted model."
-    pkill -f "valpa/inference/serve_policy.py.*--port $REMOTE_PORT" || true
+    echo "Stop the existing DUET-DINO server before running the model sweep, so each cfg is evaluated against the intended hosted model."
+    pkill -f "duet-dino-dev/inference/serve_policy.py.*--port $REMOTE_PORT" || true
 fi
 
 mkdir -p "$SERVER_LOG_DIR"
@@ -200,7 +200,7 @@ echo "=== GPU visibility: CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset}, D
 FILTERED_MODEL_CONFIGS=()
 
 for cfg_file in "${MODEL_CONFIGS[@]}"; do
-    if ! model_name="$(cfg_model_name "/workspace/robolab/valpa/configs/inference/valpa-angledreach/$cfg_file")"; then
+    if ! model_name="$(cfg_model_name "/workspace/robolab/duet-dino-dev/configs/inference/angledreach/$cfg_file")"; then
         echo "Could not find modelname in config file: $cfg_file"
         exit 1
     fi
@@ -230,7 +230,7 @@ if ((${#MODEL_CONFIGS[@]} == 0)); then
 fi
 
 for cfg_file in "${MODEL_CONFIGS[@]}"; do
-    cfg_path="/workspace/robolab/valpa/configs/inference/valpa-angledreach/$cfg_file"
+    cfg_path="/workspace/robolab/duet-dino-dev/configs/inference/angledreach/$cfg_file"
 
     if ! cfg_model_name_value="$(cfg_model_name "$cfg_path")"; then
         echo "Could not find modelname in config file: $cfg_file"
@@ -250,21 +250,21 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
     server_log="$SERVER_LOG_DIR/${cfg_name}_serve_policy.log"
 
     echo
-    echo "=== Starting VALPA server: $cfg_file ==="
+    echo "=== Starting DUET-DINO server: $cfg_file ==="
 
-    pkill -f "valpa/inference/serve_policy.py.*--port $REMOTE_PORT" || true
+    pkill -f "duet-dino-dev/inference/serve_policy.py.*--port $REMOTE_PORT" || true
     sleep 2
 
     PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-        "$ISAAC_PYTHON" valpa/inference/serve_policy.py \
-        --cfg-file "valpa-angledreach/$cfg_file" \
+        "$ISAAC_PYTHON" duet-dino-dev/inference/serve_policy.py \
+        --cfg-file "angledreach/$cfg_file" \
         --host "$SERVER_HOST" \
         --port "$REMOTE_PORT" \
         >"$server_log" 2>&1 &
     SERVER_PID="$!"
 
     if ! wait_for_server; then
-        echo "VALPA server failed to become ready for $cfg_file."
+        echo "DUET-DINO server failed to become ready for $cfg_file."
         echo "Last server log lines from $server_log:"
         tail -n 80 "$server_log" || true
         exit 1

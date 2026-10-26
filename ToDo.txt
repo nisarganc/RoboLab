@@ -19,7 +19,7 @@ PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
     --remote-port 8000
 
 # All model versions:
-HEADLESS=1 VIDEO_MODE=sensor bash examples/policy/run_reach_valpa_model_sweep_224_5x.sh
+HEADLESS=1 VIDEO_MODE=sensor bash examples/policy/run_reach_duet_model_sweep_224_5x.sh
 HEADLESS=1 VIDEO_MODE=sensor bash examples/policy/run_reach_valpa_model_sweep_256_5x.sh
 mkdir -p output && HEADLESS=1 VIDEO_MODE=sensor bash examples/policy/run_reach_valpa_model_sweep_224_10x.sh > output/sweep_224.log 2>&1
 mkdir -p output && HEADLESS=1 VIDEO_MODE=sensor bash examples/policy/run_reach_valpa_model_sweep_256_10x.sh > output/sweep_256.log 2>&1

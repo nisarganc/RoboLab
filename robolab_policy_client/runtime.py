@@ -42,8 +42,8 @@ except ImportError:
     pass
 
 try:
-    from .valpa import VALPADroidEEClient
-    POLICY_REGISTRY["valpa"] = VALPADroidEEClient
+    from .duet_dino import DUETDINOClient
+    POLICY_REGISTRY["duet-dino"] = DUETDINOClient
 except ImportError:
     pass
 

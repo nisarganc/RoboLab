@@ -41,9 +41,9 @@ WORKDIR /workspace/robolab
 # GIT_LFS_SKIP_SMUDGE=1 avoids pulling large LFS objects during build
 # RoboLab
 RUN GIT_LFS_SKIP_SMUDGE=1 /workspace/isaaclab/_isaac_sim/python.sh -m pip install --no-cache-dir -e .
-# VALPA
+# DUET-DINO
 RUN /workspace/isaaclab/_isaac_sim/python.sh -m pip install --no-cache-dir --no-deps \
     timm \
     einops
-WORKDIR /workspace/robolab/valpa
+WORKDIR /workspace/robolab/duet-dino-dev
 RUN GIT_LFS_SKIP_SMUDGE=1 /workspace/isaaclab/_isaac_sim/python.sh -m pip install --no-cache-dir --no-deps -e .

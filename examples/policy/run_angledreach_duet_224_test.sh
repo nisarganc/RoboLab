@@ -3,7 +3,7 @@ set -euo pipefail
 
 ISAAC_PYTHON="${ISAAC_PYTHON:-python-rtx-compat}"
 REMOTE_HOST="${REMOTE_HOST:-localhost}"
-REMOTE_PORT="${REMOTE_PORT:-8016}"
+REMOTE_PORT="${REMOTE_PORT:-8200}"
 SERVER_HOST="${SERVER_HOST:-0.0.0.0}"
 SERVER_START_TIMEOUT="${SERVER_START_TIMEOUT:-600}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-/workspace/robolab/output/}"
@@ -16,19 +16,11 @@ ARCHIVE_AFTER_MODEL="${ARCHIVE_AFTER_MODEL:-1}"
 DELETE_UNZIPPED_AFTER_ARCHIVE="${DELETE_UNZIPPED_AFTER_ARCHIVE:-1}"
 
 MODEL_CONFIGS=(
-    droid-224px-8f-dual.yaml
+    droid-224px-8f-dual-test.yaml
 )
 
 SERVER_PID=""
 MODEL_NAMES=()
-EVAL_EXTRA_ARGS=()
-
-if [[ "$HEADLESS" == "1" ]]; then
-    EVAL_EXTRA_ARGS+=(--headless)
-fi
-if [[ -n "$VIDEO_MODE" ]]; then
-    EVAL_EXTRA_ARGS+=(--video-mode "$VIDEO_MODE")
-fi
 
 port_open() {
     (echo >"/dev/tcp/$REMOTE_HOST/$REMOTE_PORT") >/dev/null 2>&1
@@ -121,7 +113,7 @@ output_folder_for_model() {
     if [[ -n "$OUTPUT_FOLDER_NAME" ]]; then
         echo "$OUTPUT_FOLDER_NAME"
     else
-        echo "${model_name}_angledpickup"
+        echo "${model_name}_angledreach"
     fi
 }
 
@@ -146,14 +138,14 @@ with socket.create_connection((host, port), timeout=30) as sock:
     while len(size_data) < header.size:
         chunk = sock.recv(header.size - len(size_data))
         if not chunk:
-            raise ConnectionError("VALPA policy socket closed while reading metadata header")
+            raise ConnectionError("DUET-DINO policy socket closed while reading metadata header")
         size_data += chunk
     size = header.unpack(size_data)[0]
     data = b""
     while len(data) < size:
         chunk = sock.recv(size - len(data))
         if not chunk:
-            raise ConnectionError("VALPA policy socket closed while reading metadata payload")
+            raise ConnectionError("DUET-DINO policy socket closed while reading metadata payload")
         data += chunk
 
 response = pickle.loads(data)
@@ -196,8 +188,8 @@ trap 'cleanup_server; exit 143' TERM
 
 if port_open; then
     echo "Port $REMOTE_HOST:$REMOTE_PORT is already open."
-    echo "Stop the existing VALPA server before running the model sweep, so each cfg is evaluated against the intended hosted model."
-    pkill -f "valpa/inference/serve_policy_pickup.py.*--port $REMOTE_PORT" || true
+    echo "Stop the existing DUET-DINO server before running the model sweep, so each cfg is evaluated against the intended hosted model."
+    pkill -f "duet-dino-dev/inference/serve_policy.py.*--port $REMOTE_PORT" || true
 fi
 
 mkdir -p "$SERVER_LOG_DIR"
@@ -206,7 +198,7 @@ echo "=== GPU visibility: CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset}, D
 FILTERED_MODEL_CONFIGS=()
 
 for cfg_file in "${MODEL_CONFIGS[@]}"; do
-    if ! model_name="$(cfg_model_name "/workspace/robolab/valpa/configs/inference/valpa-angledpickup/$cfg_file")"; then
+    if ! model_name="$(cfg_model_name "/workspace/robolab/duet-dino-dev/configs/inference/angledreach/$cfg_file")"; then
         echo "Could not find modelname in config file: $cfg_file"
         exit 1
     fi
@@ -231,12 +223,12 @@ MODEL_CONFIGS=("${FILTERED_MODEL_CONFIGS[@]}")
 unset FILTERED_MODEL_CONFIGS
 
 if ((${#MODEL_CONFIGS[@]} == 0)); then
-    echo "All angledpickup model configs already have archives in $OUTPUT_ROOT. Nothing to run."
+    echo "All angledreach model configs already have archives in $OUTPUT_ROOT. Nothing to run."
     exit 0
 fi
 
 for cfg_file in "${MODEL_CONFIGS[@]}"; do
-    cfg_path="/workspace/robolab/valpa/configs/inference/valpa-angledpickup/$cfg_file"
+    cfg_path="/workspace/robolab/duet-dino-dev/configs/inference/angledreach/$cfg_file"
 
     if ! cfg_model_name_value="$(cfg_model_name "$cfg_path")"; then
         echo "Could not find modelname in config file: $cfg_file"
@@ -253,24 +245,24 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
     fi
 
     cfg_name="${cfg_file%.yaml}"
-    server_log="$SERVER_LOG_DIR/${cfg_name}_serve_policy_pickup.log"
+    server_log="$SERVER_LOG_DIR/${cfg_name}_serve_policy.log"
 
     echo
-    echo "=== Starting VALPA server: $cfg_file ==="
+    echo "=== Starting DUET-DINO server: $cfg_file ==="
 
-    pkill -f "valpa/inference/serve_policy_pickup.py.*--port $REMOTE_PORT" || true
+    pkill -f "duet-dino-dev/inference/serve_policy.py.*--port $REMOTE_PORT" || true
     sleep 2
 
     PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-        "$ISAAC_PYTHON" valpa/inference/serve_policy_pickup.py \
-        --cfg-file "valpa-angledpickup/$cfg_file" \
+        "$ISAAC_PYTHON" duet-dino-dev/inference/serve_policy.py \
+        --cfg-file "angledreach/$cfg_file" \
         --host "$SERVER_HOST" \
         --port "$REMOTE_PORT" \
         >"$server_log" 2>&1 &
     SERVER_PID="$!"
 
     if ! wait_for_server; then
-        echo "VALPA server failed to become ready for $cfg_file."
+        echo "DUET-DINO server failed to become ready for $cfg_file."
         echo "Last server log lines from $server_log:"
         tail -n 80 "$server_log" || true
         exit 1
@@ -288,20 +280,15 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
 
     MODEL_NAMES+=("$model_name")
 
-    echo "=== Running 10 angledpickup eval episodes for hosted model $model_name ==="
-
-    PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-        "$ISAAC_PYTHON" examples/policy/run_angledpickup_eval.py \
-            --policy valpa \
-            --num-runs 10 \
-            --num-envs 1 \
-            --device "$DEVICE" \
-            --task-dirs wm_tasks/angledpickup \
-            --task  AngledPickupLemonTask AngledPickupLizardFigurineTask AngledPickupSoftScrubBottleTask AngledPickupKetchupTask AngledPickupBananaTask \
-            --remote-host "$REMOTE_HOST" \
-            --remote-port "$REMOTE_PORT" \
-            --output-folder-name "$output_folder_name" \
-            "${EVAL_EXTRA_ARGS[@]}"
+    echo "=== Running angledreach eval episodes for hosted model $model_name ==="
+    REMOTE_HOST="$REMOTE_HOST" \
+    REMOTE_PORT="$REMOTE_PORT" \
+    HEADLESS="$HEADLESS" \
+    VIDEO_MODE="$VIDEO_MODE" \
+    OUTPUT_FOLDER_NAME="$output_folder_name" \
+    NUM_RUNS_PER_TASK=1 \
+    DEVICE="$DEVICE" \
+        bash examples/policy/run_angledreach_eval_10x.sh
 
     archive_model_output "$output_folder_name"
     cleanup_server

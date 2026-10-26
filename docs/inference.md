@@ -8,7 +8,7 @@ RoboLab uses a **server-client architecture**: your model runs as a standalone s
 |--------|-------------|----------|-------------|--------------|
 | Pi0 / Pi0-fast / Pi05 | `Pi0DroidJointposClient` | WebSocket (OpenPI) | 8000 | `openpi-client` |
 | GR00T | `GR00TDroidJointposClient` | ZMQ | 5555 | `zmq`, `msgpack` |
-| VALPA | `VALPADroidEEClient` | TCP | 8000 | VALPA |
+| DUET-DINO | `DUETDINOClient` | TCP | 8000 | DUET-DINO |
 
 Concrete clients live in the top-level `robolab_policy_client/` package (sibling to `robolab/`, installed together). They all inherit from the `InferenceClient` ABC in `robolab/eval/base_client.py`:
 
@@ -142,15 +142,15 @@ uv run python examples/policy/run_eval.py --policy gr00t --remote-host 0.0.0.0 -
 
 ---
 
-## VALPA
+## DUET-DINO
 
-Run VALPA as two simple processes: one server that loads the model once, and one eval process that sends observations to it.
+Run DUET-DINO as two simple processes: one server that loads the model once, and one eval process that sends observations to it.
 
 ### Start the policy server
 ```bash
 cd /workspace/robolab
-/workspace/isaaclab/_isaac_sim/python.sh valpa/inference/serve_policy.py \
-    --cfg-path valpa/configs/inference/vjepa2-ac-vitg/droid-224px-8f-dual.yaml \
+/workspace/isaaclab/_isaac_sim/python.sh duet-dino-dev/inference/serve_policy.py \
+    --cfg-path duet-dino-dev/configs/inference/vjepa2-ac-vitg/droid-224px-8f-dual.yaml \
     --host 0.0.0.0 \
     --port 8000
 ```
@@ -160,7 +160,7 @@ cd /workspace/robolab
 cd /workspace/robolab
 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
     /workspace/isaaclab/_isaac_sim/python.sh examples/policy/run_eval.py \
-    --policy valpa \
+    --policy duet-dino \
     --task ReachBananaTask \
     --remote-host localhost \
     --remote-port 8000 \

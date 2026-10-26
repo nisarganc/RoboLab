@@ -231,7 +231,7 @@ def main():
             device=args_cli.device,
             num_envs=args_cli.num_envs,
             use_fabric=True,
-            policy="valpa",
+            policy="duet-dino",
         )
         obs, _ = env.reset()
         obs, _, _, _, _ = env.step(_simple_zero_action(env))

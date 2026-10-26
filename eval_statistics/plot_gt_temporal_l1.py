@@ -51,9 +51,9 @@ RESULTS_ROOT = Path(
 SOURCE_ZIP = RESULTS_ROOT / "dual_dinov3_angledpickup.zip"
 DEFAULT_OUTPUT = Path(__file__).with_name("gt_temporal_l1_dino_vjepa.png")
 REPO_ROOT = Path(__file__).resolve().parents[1]
-VALPA_ROOT = REPO_ROOT / "valpa"
+DUET_DINO_ROOT = REPO_ROOT / "duet-dino-dev"
 CHECKPOINT_ROOT = REPO_ROOT.parent / ".cache" / "checkpoints"
-CONFIG_ROOT = VALPA_ROOT / "configs" / "inference" / "valpa-angledpickup"
+CONFIG_ROOT = DUET_DINO_ROOT / "configs" / "inference" / "angledpickup"
 
 # Edit these defaults or use the command-line options below.
 TASK = "AngledPickupLizardFigurineTask"
@@ -168,9 +168,9 @@ def make_world_model(
     predictor_checkpoints: tuple[Path, ...],
 ):
     """Build the exact pickup WorldModel while overriding stale config paths."""
-    if str(VALPA_ROOT) not in sys.path:
-        sys.path.insert(0, str(VALPA_ROOT))
-    from inference.serve_policy_pickup import VALPADroidEEPolicy
+    if str(DUET_DINO_ROOT) not in sys.path:
+        sys.path.insert(0, str(DUET_DINO_ROOT))
+    from inference.serve_policy_pickup import DUETDINOPolicy
 
     spec = MODEL_SPECS[model_name]
     config_path = CONFIG_ROOT / spec.config_name
@@ -187,7 +187,7 @@ def make_world_model(
         else [str(path) for path in predictor_checkpoints]
     )
 
-    policy = VALPADroidEEPolicy.__new__(VALPADroidEEPolicy)
+    policy = DUETDINODroidEEPolicy.__new__(DUETDINODroidEEPolicy)
     policy.cfg = config
     policy._initialize_model()
     return policy.world_model

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${MODEL_CONFIG:?Set MODEL_CONFIG to a valpa-angledreach YAML filename}"
+: "${MODEL_CONFIG:?Set MODEL_CONFIG to a angledreach YAML filename}"
 : "${REMOTE_PORT:?Set REMOTE_PORT to a unique policy-server port}"
 
 ISAAC_PYTHON="${ISAAC_PYTHON:-python-rtx-compat}"
@@ -17,7 +17,7 @@ VIDEO_MODE="${VIDEO_MODE:-sensor}"
 HEADLESS="${HEADLESS:-1}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-$PWD/output}"
 SERVER_LOG_DIR="${SERVER_LOG_DIR:-$OUTPUT_ROOT/bg_distractor_server_logs}"
-VALPA_CONFIG_DIR="${VALPA_CONFIG_DIR:-$PWD/valpa/configs/inference/valpa-angledreach}"
+DUET_DINO_CONFIG_DIR="${DUET_DINO_CONFIG_DIR:-$PWD/duet-dino-dev/configs/inference/angledreach}"
 
 SERVER_PID=""
 
@@ -50,7 +50,7 @@ trap cleanup_server EXIT
 trap 'cleanup_server; exit 130' INT
 trap 'cleanup_server; exit 143' TERM
 
-cfg_path="$VALPA_CONFIG_DIR/$MODEL_CONFIG"
+cfg_path="$DUET_DINO_CONFIG_DIR/$MODEL_CONFIG"
 if [[ ! -f "$cfg_path" ]]; then
     echo "Model config not found: $cfg_path"
     exit 1
@@ -67,8 +67,8 @@ eval_log="$SERVER_LOG_DIR/${cfg_name}_eval.log"
 
 echo "=== Starting $MODEL_CONFIG on $REMOTE_HOST:$REMOTE_PORT ==="
 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-    "$ISAAC_PYTHON" valpa/inference/serve_policy.py \
-    --cfg-file "valpa-angledreach/$MODEL_CONFIG" \
+    "$ISAAC_PYTHON" duet-dino-dev/inference/serve_policy.py \
+    --cfg-file "angledreach/$MODEL_CONFIG" \
     --host "$SERVER_HOST" \
     --port "$REMOTE_PORT" \
     >"$server_log" 2>&1 &
@@ -90,7 +90,7 @@ set +e
 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
     "$ISAAC_PYTHON" examples/policy/run_eval_background_variation.py \
     --angled-reach \
-    --policy valpa \
+    --policy duet-dino \
     --task-dirs wm_tasks/bg_distractor \
     --num-backgrounds "$NUM_BACKGROUNDS" \
     --background-seed "$BACKGROUND_SEED" \

@@ -33,7 +33,7 @@ pyrightconfig.json
 
 ${data}/*
 checkpoints/*
-valpa/
+duet-dino-dev/
 logs/
 droid/
 

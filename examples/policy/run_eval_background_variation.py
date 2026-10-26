@@ -41,8 +41,8 @@ parser.add_argument("--tag", nargs='+', default=None,
                        help="List of tags of tasks to evaluate on ")
 parser.add_argument("--task-dirs", nargs='+', default=None,
                        help="List of task directories to evaluate on")
-parser.add_argument("--policy", choices=["pi0", "pi0_fast", "paligemma", "paligemma_fast", "pi05", "gr00t", "dreamzero", "valpa", "molmo", "openvla", "openvla_oft"], default=None,
-                       help="Action-prediction backend (default: valpa for --angled-reach, otherwise pi05)")
+parser.add_argument("--policy", choices=["pi0", "pi0_fast", "paligemma", "paligemma_fast", "pi05", "gr00t", "dreamzero", "duet-dino", "molmo", "openvla", "openvla_oft"], default=None,
+                       help="Action-prediction backend (default: duet-dino for --angled-reach, otherwise pi05)")
 parser.add_argument("--num-runs", "--num_runs", type=int, default=1,
                        help="Number of sequential runs per task (default: 1). Total episodes = num_runs * num_envs. Prefer increasing --num_envs for more episodes. Only increase --num-runs if you run out of GPU memory with the desired num_envs.")
 parser.add_argument("--enable-subtask", "--enable_subtask", action="store_true",
@@ -75,7 +75,7 @@ args_cli, _= parser.parse_known_args()
 if args_cli.task_dirs is None:
     args_cli.task_dirs = ["wm_tasks/bg_distractor"] if args_cli.angled_reach else DEFAULT_TASK_SUBFOLDERS
 if args_cli.policy is None:
-    args_cli.policy = "valpa" if args_cli.angled_reach else "pi05"
+    args_cli.policy = "duet-dino" if args_cli.angled_reach else "pi05"
 args_cli.livestream = 0
 args_cli.enable_cameras = True
 args_cli.save_videos = args_cli.video_mode != "none"
@@ -118,9 +118,9 @@ else:
 def main():
     """Main function."""
     if args_cli.output_folder_name is None:
-        if args_cli.angled_reach and args_cli.policy == "valpa":
-            from robolab_policy_client.valpa import VALPADroidEEClient
-            metadata_client = VALPADroidEEClient(
+        if args_cli.angled_reach and args_cli.policy == "duet-dino":
+            from robolab_policy_client.duet_dino import DUETDINOClient
+            metadata_client = DUETDINOClient(
                 remote_host=args_cli.remote_host,
                 remote_port=args_cli.remote_port,
             )

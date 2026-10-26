@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${MODEL_CONFIG:?Set MODEL_CONFIG to a valpa-reach YAML filename}"
+: "${MODEL_CONFIG:?Set MODEL_CONFIG to a reach YAML filename}"
 : "${REMOTE_PORT:?Set REMOTE_PORT to a unique policy-server port}"
 
 ISAAC_PYTHON="${ISAAC_PYTHON:-python-rtx-compat}"
@@ -25,7 +25,7 @@ RANDOMIZATION_SEED="${RANDOMIZATION_SEED:-20260821}"
 OUTPUT_SUFFIX="${OUTPUT_SUFFIX:-}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-$PWD/output}"
 SERVER_LOG_DIR="${SERVER_LOG_DIR:-$OUTPUT_ROOT/side_camera_server_logs}"
-VALPA_CONFIG_DIR="${VALPA_CONFIG_DIR:-$PWD/valpa/configs/inference/valpa-reach}"
+CONFIG_DIR="${CONFIG_DIR:-$PWD/duet-dino-dev/configs/inference/reach}"
 ARCHIVE_AFTER_RUNS="${ARCHIVE_AFTER_RUNS:-1}"
 
 TASKS=(
@@ -59,7 +59,7 @@ if (( NUM_RUNS < 1 || NUM_ENVS < 1 )); then
     exit 2
 fi
 
-cfg_path="$VALPA_CONFIG_DIR/$MODEL_CONFIG"
+cfg_path="$CONFIG_DIR/$MODEL_CONFIG"
 if [[ ! -f "$cfg_path" ]]; then
     echo "Model config not found: $cfg_path"
     exit 1
@@ -147,8 +147,8 @@ fi
 mkdir -p "$SERVER_LOG_DIR"
 echo "=== Starting $MODEL_CONFIG on $REMOTE_HOST:$REMOTE_PORT ==="
 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-    "$ISAAC_PYTHON" valpa/inference/serve_policy.py \
-    --cfg-file "valpa-reach/$MODEL_CONFIG" \
+    "$ISAAC_PYTHON" duet-dino-dev/inference/serve_policy.py \
+    --cfg-file "reach/$MODEL_CONFIG" \
     --host "$SERVER_HOST" \
     --port "$REMOTE_PORT" \
     >"$server_log" 2>&1 &
@@ -170,7 +170,7 @@ echo "=== Shared randomization schedule: base seed $RANDOMIZATION_SEED; run N us
 echo "=== Side camera: $SIDE_CAMERA_NAME; position ±($POSITION_X, $POSITION_Y, $POSITION_Z) m; angle ±($ANGLE_ROLL, $ANGLE_PITCH, $ANGLE_YAW) rad ==="
 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
     "$ISAAC_PYTHON" examples/policy/run_reach_eval.py \
-    --policy valpa \
+    --policy duet-dino \
     --task "$TASK" \
     --num-runs "$NUM_RUNS" \
     --num-envs "$NUM_ENVS" \

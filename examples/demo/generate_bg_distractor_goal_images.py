@@ -83,7 +83,7 @@ def main():
             env, env_cfg = create_env(
                 env_cfg,
                 instruction_type=args_cli.instruction_type,
-                policy="valpa",
+                policy="duet-dino",
             )
             generate_goal_images(env, env_cfg, overwrite=args_cli.overwrite)
             generated += 1

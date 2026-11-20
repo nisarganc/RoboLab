@@ -1,0 +1,107 @@
+{
+  "reached": true,
+  "manual_capture": false,
+  "capture_method": "executed_angled_grasp_lift_home",
+  "ee_link": "panda_link8",
+  "pose_frame": "world",
+  "quaternion_order": "wxyz",
+  "last_distance": 0.005463247187435627,
+  "last_angle_distance": 0.00029569133766926825,
+  "last_ee_pose": [
+    0.5169530510902405,
+    -0.0017559187253937125,
+    0.4091954529285431,
+    -2.0295975389217347e-07,
+    0.965964138507843,
+    2.839463206782966e-07,
+    0.2586759328842163
+  ],
+  "initial_ee_pose": [
+    0.3597031235694885,
+    3.0484546442721694e-08,
+    0.48994073271751404,
+    -3.4347019672864576e-10,
+    0.9999999403953552,
+    -2.307082525021542e-07,
+    -3.1540915301775385e-07
+  ],
+  "pitch_degrees": -30,
+  "yaw_degrees": 0,
+  "gripper_open": false,
+  "grasp_point": [
+    0.6196064949035645,
+    -0.001756562851369381,
+    0.23154830932617188
+  ],
+  "capture_settings": {
+    "capture_pregrasp_distance": 0.04,
+    "capture_grasp_point": [
+      0.62,
+      0,
+      0.23
+    ],
+    "capture_pitch_degrees": -30,
+    "capture_pad_offset": [
+      0,
+      0,
+      0.165
+    ],
+    "capture_lift_height": 0.16,
+    "capture_home_height_offset": 0.0,
+    "capture_home_rotation": "reset",
+    "capture_gripper_steps": 100,
+    "capture_reference_reach_pose": "AngledReachPitchShelfMarkerTask",
+    "capture_grasp_local": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "grasp_ee_target_pose": [
+    0.5371065735816956,
+    -0.0017565629677847028,
+    0.37444251775741577,
+    -6.004346175814135e-08,
+    0.9659258723258972,
+    -2.2275817457284575e-07,
+    0.25881874561309814
+  ],
+  "automated_pickup_home": true,
+  "gripper_joint_pos_1": [
+    2.6910242922895122e-08
+  ],
+  "gripper_joint_target_1": [
+    0.0
+  ],
+  "last_ee_pose_2": [
+    0.5327186584472656,
+    -0.005643835756927729,
+    0.38078221678733826,
+    -0.009992728941142559,
+    0.9654696583747864,
+    0.0015030448557808995,
+    0.2603195011615753
+  ],
+  "gripper_joint_pos_2": [
+    0.7686225771903992
+  ],
+  "gripper_joint_target_2": [
+    0.7853981852531433
+  ],
+  "last_ee_pose_3": [
+    0.3607563078403473,
+    0.005050813313573599,
+    0.4881442189216614,
+    -0.021573223173618317,
+    0.9997612833976746,
+    0.00020989702898077667,
+    0.0034557292237877846
+  ],
+  "gripper_joint_pos_3": [
+    0.7754213809967041
+  ],
+  "gripper_joint_target_3": [
+    0.7853981852531433
+  ],
+  "pickup_success": true
+}

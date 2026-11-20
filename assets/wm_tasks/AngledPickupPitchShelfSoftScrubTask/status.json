@@ -1,0 +1,138 @@
+{
+  "reached": true,
+  "manual_capture": false,
+  "capture_method": "executed_angled_grasp_lift_home",
+  "ee_link": "panda_link8",
+  "pose_frame": "world",
+  "quaternion_order": "wxyz",
+  "last_distance": 0.00587328989058733,
+  "last_angle_distance": 0.0011609854409471154,
+  "last_ee_pose": [
+    0.47260820865631104,
+    -0.2419472485780716,
+    0.37784233689308167,
+    0.000244504539296031,
+    0.8870815634727478,
+    -0.0005038529052399099,
+    0.46161219477653503
+  ],
+  "initial_ee_pose": [
+    0.3597031235694885,
+    3.0484546442721694e-08,
+    0.48994073271751404,
+    -3.4347019672864576e-10,
+    0.9999999403953552,
+    -2.307082525021542e-07,
+    -3.1540915301775385e-07
+  ],
+  "pitch_degrees": -55,
+  "yaw_degrees": 0,
+  "gripper_open": false,
+  "grasp_point": [
+    0.6490512490272522,
+    -0.24149830639362335,
+    0.25460511445999146
+  ],
+  "capture_settings": {
+    "capture_pregrasp_distance": 0.06,
+    "capture_grasp_point": [
+      0.6500070957023854,
+      -0.2431180591493606,
+      0.25521183427693317
+    ],
+    "capture_grasp_local": [
+      0.005,
+      0,
+      0.02
+    ],
+    "capture_pitch_degrees": -55,
+    "capture_pregrasp_offset": [
+      -0.04,
+      0.0,
+      0.09
+    ],
+    "capture_pad_offset": [
+      0,
+      0,
+      0.155
+    ],
+    "capture_lift_height": 0.3,
+    "capture_home_height_offset": 0.0,
+    "capture_home_rotation": "reset",
+    "capture_home_controller": "joint_position",
+    "capture_home_joint_steps": 180,
+    "capture_return_via_raised_home": true,
+    "capture_min_safe_height": 0.72,
+    "capture_home_pose_correction_steps": 40,
+    "capture_max_object_slip_m": 0.025,
+    "capture_max_object_slip_rad": 0.26,
+    "capture_gripper_steps": 100,
+    "capture_reference_reach_pose": "AngledReachPitchShelfSoftScrubTask"
+  },
+  "grasp_ee_target_pose": [
+    0.5220827460289001,
+    -0.24149830639362335,
+    0.3435095548629761,
+    -1.0683387330345795e-07,
+    0.8870109915733337,
+    -2.0448213433610363e-07,
+    0.46174830198287964
+  ],
+  "initial_arm_joint_positions": {
+    "panda_joint1": -1.2154836781519407e-07,
+    "panda_joint2": -0.6283185482025146,
+    "panda_joint3": 1.332288377398072e-07,
+    "panda_joint4": -2.5132741928100586,
+    "panda_joint5": -9.253763266769965e-08,
+    "panda_joint6": 1.884955644607544,
+    "panda_joint7": 3.8385192624446063e-07
+  },
+  "raised_home_arm_joint_positions": {
+    "panda_joint1": 1.0582250979496166e-05,
+    "panda_joint2": -0.5126053690910339,
+    "panda_joint3": -6.787119218643056e-06,
+    "panda_joint4": -1.8502215147018433,
+    "panda_joint5": -3.448094503255561e-06,
+    "panda_joint6": 1.3385071754455566,
+    "panda_joint7": 4.536645519692684e-06
+  },
+  "automated_pickup_home": true,
+  "gripper_effort_limit_Nm": 5.0,
+  "gripper_joint_pos_1": [
+    7.83389442204907e-09
+  ],
+  "gripper_joint_target_1": [
+    0.0
+  ],
+  "last_ee_pose_2": [
+    0.5183300971984863,
+    -0.24959233403205872,
+    0.35084474086761475,
+    -0.007466690149158239,
+    0.8868292570114136,
+    0.002058614743873477,
+    0.46203234791755676
+  ],
+  "gripper_joint_pos_2": [
+    0.5313416719436646
+  ],
+  "gripper_joint_target_2": [
+    0.7853981852531433
+  ],
+  "last_ee_pose_3": [
+    0.36016741394996643,
+    0.005634544417262077,
+    0.48834943771362305,
+    -0.03686518967151642,
+    0.9993178844451904,
+    0.00025445641949772835,
+    0.0021358951926231384
+  ],
+  "gripper_joint_pos_3": [
+    0.5209324359893799
+  ],
+  "gripper_joint_target_3": [
+    0.7853981852531433
+  ],
+  "pickup_success": true
+}

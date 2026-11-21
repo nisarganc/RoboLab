@@ -197,7 +197,7 @@ trap 'cleanup_server; exit 143' TERM
 if port_open; then
     echo "Port $REMOTE_HOST:$REMOTE_PORT is already open."
     echo "Stop the existing DUET-DINO server before running the model sweep, so each cfg is evaluated against the intended hosted model."
-    pkill -f "duet-dino-dev/inference/serve_policy_pickup.py.*--port $REMOTE_PORT" || true
+    pkill -f "/workspace/duet-dino/inference/serve_policy.py.*--port $REMOTE_PORT" || true
 fi
 
 mkdir -p "$SERVER_LOG_DIR"
@@ -206,7 +206,7 @@ echo "=== GPU visibility: CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset}, D
 FILTERED_MODEL_CONFIGS=()
 
 for cfg_file in "${MODEL_CONFIGS[@]}"; do
-    if ! model_name="$(cfg_model_name "/workspace/robolab/duet-dino-dev/configs/inference/angledpickup/$cfg_file")"; then
+    if ! model_name="$(cfg_model_name "/workspace/duet-dino/configs/inference/angledpickup/$cfg_file")"; then
         echo "Could not find modelname in config file: $cfg_file"
         exit 1
     fi
@@ -236,7 +236,7 @@ if ((${#MODEL_CONFIGS[@]} == 0)); then
 fi
 
 for cfg_file in "${MODEL_CONFIGS[@]}"; do
-    cfg_path="/workspace/robolab/duet-dino-dev/configs/inference/angledpickup/$cfg_file"
+    cfg_path="/workspace/duet-dino/configs/inference/angledpickup/$cfg_file"
 
     if ! cfg_model_name_value="$(cfg_model_name "$cfg_path")"; then
         echo "Could not find modelname in config file: $cfg_file"
@@ -258,11 +258,11 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
     echo
     echo "=== Starting DUET-DINO server: $cfg_file ==="
 
-    pkill -f "duet-dino-dev/inference/serve_policy_pickup.py.*--port $REMOTE_PORT" || true
+    pkill -f "/workspace/duet-dino/inference/serve_policy.py.*--port $REMOTE_PORT" || true
     sleep 2
 
     PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-        "$ISAAC_PYTHON" duet-dino-dev/inference/serve_policy_pickup.py \
+        "$ISAAC_PYTHON" /workspace/duet-dino/inference/serve_policy.py \
         --cfg-file "angledpickup/$cfg_file" \
         --host "$SERVER_HOST" \
         --port "$REMOTE_PORT" \
@@ -297,7 +297,15 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
             --num-envs 1 \
             --device "$DEVICE" \
             --task-dirs wm_tasks/angledpickup \
-            --task AngledPickupKetchupTask AngledPickupSoftScrubBottleTask  AngledPickupBananaTask \
+            --task AngledPickupKetchupTask AngledPickupSoftScrubBottleTask AngledPickupBananaTask \
+                AngledPickupRollTiltedKetchupBottleTask \
+                AngledPickupRollTiltedRanchBottleTask \
+                AngledPickupRollMugHandleTask \
+                AngledPickupRollMeasuringCupHandleTask \
+                AngledPickupPitchSidewaysJugTask \
+                AngledPickupPitchShelfMarkerTask \
+                AngledPickupPitchShelfMustardTask \
+                AngledPickupPitchShelfSoftScrubTask \
             --remote-host "$REMOTE_HOST" \
             --remote-port "$REMOTE_PORT" \
             --output-folder-name "$output_folder_name" \

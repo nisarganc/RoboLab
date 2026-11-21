@@ -298,6 +298,14 @@ for cfg_file in "${MODEL_CONFIGS[@]}"; do
             --device "$DEVICE" \
             --task-dirs wm_tasks/angledpickup \
             --task AngledPickupLemonTask AngledPickupLizardFigurineTask AngledPickupSoftScrubBottleTask AngledPickupKetchupTask AngledPickupBananaTask \
+                AngledPickupRollTiltedKetchupBottleTask \
+                AngledPickupRollTiltedRanchBottleTask \
+                AngledPickupRollMugHandleTask \
+                AngledPickupRollMeasuringCupHandleTask \
+                AngledPickupPitchSidewaysJugTask \
+                AngledPickupPitchShelfMarkerTask \
+                AngledPickupPitchShelfMustardTask \
+                AngledPickupPitchShelfSoftScrubTask \
             --remote-host "$REMOTE_HOST" \
             --remote-port "$REMOTE_PORT" \
             --output-folder-name "$output_folder_name" \
